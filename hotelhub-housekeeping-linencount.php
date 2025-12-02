@@ -10,7 +10,7 @@
  * Requires at least: 5.8
  * Requires PHP: 7.4
  *
- * Requires Plugins: hotelhub-app, hotelhub-housekeeping-dailylist
+ * Requires Plugins: hotel-hub-app, hotelhubmodule-housekeeping-dailylist
  */
 
 // Exit if accessed directly
