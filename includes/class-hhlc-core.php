@@ -131,9 +131,6 @@ class HHLC_Core {
         return null;
     }
 
-    public function get_settings_callback() {
-        return array(HHLC_Settings::instance(), 'render_settings_card');
-    }
 
     public function get_supports() {
         return array('multi_location', 'reports', 'real_time_sync');
@@ -147,7 +144,20 @@ class HHLC_Core {
             'department' => $this->get_department(),
             'icon' => $this->get_icon(),
             'color' => $this->get_color(),
-            'version' => $this->get_version()
+            'version' => $this->get_version(),
+            'permissions' => array(
+                'hhlc_access_module',
+                'hhlc_edit_submitted',
+                'hhlc_view_reports'
+            ),
+            'settings_pages' => array(
+                array(
+                    'slug' => 'hhlc-settings',
+                    'title' => __('Linen Count Settings', 'hhlc'),
+                    'menu_title' => __('Linen Count', 'hhlc'),
+                    'callback' => array('HHLC_Settings', 'render_settings_card')
+                )
+            )
         );
     }
     /**
