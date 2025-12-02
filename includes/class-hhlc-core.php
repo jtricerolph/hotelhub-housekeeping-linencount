@@ -79,29 +79,30 @@ class HHLC_Core {
     /**
      * Register permissions with WFA
      */
-    public function register_permissions($permissions) {
-        $permissions['hhlc_access_module'] = array(
-            'label' => 'Access Linen Count Module',
-            'description' => 'Allow users to view and submit linen counts',
-            'department' => 'housekeeping',
-            'default_roles' => array('housekeeping', 'housekeeping_supervisor', 'administrator')
+    public function register_permissions($permissions_manager) {
+        // Register permission: Access module
+        $permissions_manager->register_permission(
+            'hhlc_access_module',
+            __('Access Linen Count Module', 'hhlc'),
+            __('Allow users to view and submit linen counts', 'hhlc'),
+            'Housekeeping - Linen Count'
         );
 
-        $permissions['hhlc_edit_submitted'] = array(
-            'label' => 'Edit Submitted Linen Counts',
-            'description' => 'Allow users to edit linen counts after submission',
-            'department' => 'housekeeping',
-            'default_roles' => array('housekeeping_supervisor', 'administrator')
+        // Register permission: Edit submitted counts
+        $permissions_manager->register_permission(
+            'hhlc_edit_submitted',
+            __('Edit Submitted Linen Counts', 'hhlc'),
+            __('Allow users to edit linen counts after submission', 'hhlc'),
+            'Housekeeping - Linen Count'
         );
 
-        $permissions['hhlc_view_reports'] = array(
-            'label' => 'View Linen Count Reports',
-            'description' => 'Allow users to access linen count reports',
-            'department' => 'housekeeping',
-            'default_roles' => array('housekeeping_supervisor', 'manager', 'administrator')
+        // Register permission: View reports
+        $permissions_manager->register_permission(
+            'hhlc_view_reports',
+            __('View Linen Count Reports', 'hhlc'),
+            __('Allow users to access linen count reports', 'hhlc'),
+            'Housekeeping - Linen Count'
         );
-
-        return $permissions;
     }
 
     /**
