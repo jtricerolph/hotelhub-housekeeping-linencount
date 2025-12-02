@@ -45,13 +45,19 @@ class HHLC_Display {
      */
     private function init_hooks() {
         // Hook into the daily list modal
-        add_action('hhdl_modal_sections', array($this, 'render_modal_section'), 10, 3);
+        add_action('hhdl_modal_sections', array($this, 'render_modal_section'), 10, 5);
     }
 
     /**
      * Render the linen count section in the modal
+     *
+     * @param int    $location_id   Hotel Hub location ID
+     * @param string $room_id       Room/site identifier
+     * @param string $date          Date in Y-m-d format
+     * @param array  $room_details  Full room details array (optional)
+     * @param array  $booking_data  Booking data from NewBook API (optional)
      */
-    public function render_modal_section($location_id, $room_id, $date) {
+    public function render_modal_section($location_id, $room_id, $date, $room_details = array(), $booking_data = array()) {
         // Check if user has permission
         if (!$this->user_can_access()) {
             return;
