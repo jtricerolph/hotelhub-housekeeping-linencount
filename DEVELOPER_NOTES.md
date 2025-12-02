@@ -193,9 +193,11 @@ __('Translatable String', 'different-domain')  // Bad
 ```
 
 ## Checklist for New Modules
+n- [ ] Reports use `->register_report()` method (not array)
 
 Before pushing to production:
 
+- [ ] Module registration uses `->register_module()` method + ALL getter methods (including get_config())
 - [ ] WFA permissions use `->register_permission()` method (not array)
 - [ ] Plugin dependency names match actual directory names
 - [ ] No premature dependency checks in `load_dependencies()`
@@ -240,3 +242,55 @@ When stuck:
 
 **Last Updated:** 2024-12-02
 **Applies to:** Hotel Hub Module development
+
+## ⚠️ CRITICAL #3: Reports Registration
+
+**WRONG WAY** (treats as array):
+```php
+public function register_report($reports) {
+    $reports['report-id'] = array(
+        'title' => 'Report Title',
+        'description' => 'Description',
+        'callback' => array($this, 'render'),
+        // ...
+    );
+    return $reports;
+}
+```
+
+**RIGHT WAY** (uses object method):
+```php
+public function register_report($reports_manager) {
+    $reports_manager->register_report(
+        'report-id',
+        __('Report Title', 'textdomain'),
+        __('Report Description', 'textdomain'),
+        array($this, 'render_report_page'),
+        'icon_name',
+        'department_name'
+    );
+}
+```
+
+**Error You'll Get:**
+```
+Fatal error: Cannot use object of type HHA_Reports as array
+```
+
+## ⚠️ CRITICAL #4: Required Getter Method - get_config()
+
+**ALL modules MUST implement get_config() method:**
+
+```php
+public function get_config() {
+    return array();
+}
+```
+
+**Error You'll Get:**
+```
+HHA_Modules: Module must implement get_config() method
+```
+
+Even if your module doesn't have configuration, you must return an empty array.
+
