@@ -58,23 +58,18 @@ class HHLC_Display {
      * @param array  $booking_data  Booking data from NewBook API (optional)
      */
     public function render_modal_section($location_id, $room_id, $date, $room_details = array(), $booking_data = array()) {
+        // Always render the section, but show configuration messages if needed
+        $settings = HHLC_Settings::instance();
+
         // Check if user has permission
-        if (!$this->user_can_access()) {
-            return;
-        }
+        $has_permission = $this->user_can_access();
 
         // Check if module is enabled for this location
-        $settings = HHLC_Settings::instance();
-        if (!$settings->is_enabled_for_location($location_id)) {
-            return;
-        }
+        $is_enabled = $settings->is_enabled_for_location($location_id);
 
         // Get linen items configuration
         $linen_items = $settings->get_linen_items($location_id);
-
-        if (empty($linen_items)) {
-            return; // Don't render if no items configured
-        }
+        $has_items = !empty($linen_items);
 
         // Get existing counts for this room and date
         $existing_counts = $this->get_room_linen_counts($location_id, $room_id, $date);
@@ -83,11 +78,30 @@ class HHLC_Display {
         // Check if user can edit
         $can_edit = HHLC_Core::user_can_edit_submitted();
         ?>
-        <div class="hhlc-linen-section">
-            <h3>
-                <span class="material-symbols-outlined">dry_cleaning</span>
-                Spoilt Linen Count
-            </h3>
+        <section class="hhlc-linen-section">
+            <div class="hhdl-section-header">
+                <h3>
+                    <span class="material-symbols-outlined">dry_cleaning</span>
+                    Spoilt Linen Count
+                </h3>
+            </div>
+
+            <?php if (!$has_permission): ?>
+                <p class="hhlc-notice hhlc-notice-warning">
+                    You don't have permission to access the Linen Count module.
+                </p>
+            <?php elseif (!$is_enabled): ?>
+                <p class="hhlc-notice hhlc-notice-info">
+                    Linen Count module is not enabled for this location.
+                    <a href="<?php echo admin_url('admin.php?page=hhlc-settings'); ?>">Enable in settings</a>
+                </p>
+            <?php elseif (!$has_items): ?>
+                <p class="hhlc-notice hhlc-notice-info">
+                    No linen items configured for this location.
+                    <a href="<?php echo admin_url('admin.php?page=hhlc-settings'); ?>">Add linen items</a>
+                </p>
+            <?php else: ?>
+            <!-- Linen Count Interface -->
 
             <div class="hhlc-linen-controls <?php echo $is_locked ? 'locked' : ''; ?>"
                  data-location="<?php echo esc_attr($location_id); ?>"
@@ -152,7 +166,8 @@ class HHLC_Display {
                 </div>
                 <?php endif; ?>
             </div>
-        </div>
+            <?php endif; // End permission/enabled/items checks ?>
+        </section>
         <?php
     }
 
