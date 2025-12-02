@@ -197,34 +197,46 @@ __('Translatable String', 'different-domain')  // Bad
 Before pushing to production:
 
 
+
 ## ⚠️ CRITICAL #3: Reports Registration
 
-**Reports use ARRAY pattern (NOT object method):**
+**Reports use add_report() OBJECT METHOD:**
 
 ```php
 public function register_report($reports) {
-    $reports['report-id'] = array(
-        'title' => __('Report Title', 'textdomain'),
-        'description' => __('Report Description', 'textdomain'),
-        'capability' => 'view_reports',
-        'callback' => array($this, 'render_report_page'),
-        'icon' => 'icon_name',
-        'department' => 'department_name'
+    $reports->add_report(
+        'report-id',
+        array(
+            'title' => __('Report Title', 'textdomain'),
+            'description' => __('Report Description', 'textdomain'),
+            'capability' => 'view_reports',
+            'callback' => array($this, 'render_report_page'),
+            'icon' => 'icon_name',
+            'department' => 'department_name'
+        )
     );
-    return $reports;
 }
 ```
 
-**Unlike modules and permissions, reports DO NOT use an object method.**
+**Error You'll Get if using array syntax:**
+```
+Fatal error: Cannot use object of type HHA_Reports as array
+```
 
 ## ⚠️ CRITICAL #4: Required Getter Method - get_config()
 
-**ALL modules MUST implement get_config() method with 'id' field:**
+**ALL modules MUST implement get_config() with ALL fields:**
 
 ```php
 public function get_config() {
     return array(
-        'id' => 'module_id'
+        'id' => $this->get_id(),
+        'name' => $this->get_name(),
+        'description' => $this->get_description(),
+        'department' => $this->get_department(),
+        'icon' => $this->get_icon(),
+        'color' => $this->get_color(),
+        'version' => $this->get_version()
     );
 }
 ```
@@ -233,8 +245,8 @@ public function get_config() {
 ```
 HHA_Modules: Module must implement get_config() method
 HHA_Modules: Module config missing required field: id
+HHA_Modules: Module config missing required field: name
 ```
 
-The 'id' field is required - cannot be an empty array.
-
+Must include: id, name, description, department, icon, color, version
 
