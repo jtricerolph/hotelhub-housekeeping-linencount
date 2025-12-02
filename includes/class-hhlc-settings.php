@@ -50,16 +50,13 @@ class HHLC_Settings {
      */
     private function init_hooks() {
         error_log('HHLC Settings: init_hooks called');
-        
+
         // Register settings
         add_action('admin_init', array($this, 'register_settings'));
 
         // Save settings
         add_action('admin_post_hhlc_save_settings', array($this, 'save_settings'));
 
-        // Hook into Hotel Hub settings page
-        add_filter('hha_module_settings_sections', array($this, 'add_settings_section'), 10, 2);
-        
         error_log('HHLC Settings: Hooks registered');
     }
 
@@ -74,52 +71,27 @@ class HHLC_Settings {
     }
 
     /**
-     * Add settings section to Hotel Hub settings page
+     * Render settings page (loads template)
      */
-    public function add_settings_section($sections, $location_id) {
-        error_log('HHLC Settings: add_settings_section called with location_id: ' . $location_id);
-        error_log('HHLC Settings: Existing sections: ' . print_r(array_keys($sections), true));
-        
-        $sections['linen_count'] = array(
-            'title' => 'Linen Count Configuration',
-            'callback' => array($this, 'render_settings_section'),
-            'location_id' => $location_id
-        );
-        
-        error_log('HHLC Settings: Added linen_count section');
-        return $sections;
+    public static function render_settings_card($location_id = null) {
+        error_log('HHLC: render_settings_card called');
+
+        // Load the settings template
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'admin/views/settings.php';
+
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            error_log('HHLC Error: Settings template not found at ' . $template_path);
+            echo '<div class="notice notice-error"><p>Settings template not found.</p></div>';
+        }
     }
 
     /**
-     * Render settings card for module
+     * Public wrapper to render settings section (called from template)
      */
-    public static function render_settings_card($location_id = null) {
-        // Debug: Method called
-        error_log('HHLC: render_settings_card called with location_id: ' . var_export($location_id, true));
-        echo '<!-- HHLC: render_settings_card called -->';
-        
-        // Get location_id from various sources if not provided
-        if (empty($location_id)) {
-            if (isset($_GET['location_id'])) {
-                $location_id = intval($_GET['location_id']);
-            } elseif (function_exists('hha') && method_exists(hha(), 'get_current_location_id')) {
-                $location_id = hha()->get_current_location_id();
-            } else {
-                $location_id = 0;
-            }
-        }
-        
-        // Debug output
-        error_log('HHLC: Final location_id = ' . $location_id);
-        echo '<!-- HHLC Debug: location_id = ' . esc_html($location_id) . ' -->';
-        
-        try {
-            self::render_settings_section($location_id);
-            error_log('HHLC: render_settings_section completed');
-        } catch (Exception $e) {
-            error_log('HHLC Error: ' . $e->getMessage());
-            echo '<!-- HHLC Error: ' . esc_html($e->getMessage()) . ' -->';
-        }
+    public static function render_settings_section_public($location_id) {
+        self::render_settings_section($location_id);
     }
 
     /**
@@ -280,7 +252,7 @@ class HHLC_Settings {
      */
     public function save_settings() {
         // Check nonce
-        if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 'hhlc_save_settings')) {
+        if (!isset($_POST['hhlc_settings_nonce']) || !wp_verify_nonce($_POST['hhlc_settings_nonce'], 'hhlc_save_settings')) {
             wp_die('Security check failed');
         }
 
@@ -334,7 +306,7 @@ class HHLC_Settings {
         // Redirect back to settings page
         $redirect_url = add_query_arg(
             array(
-                'page' => 'hha-settings',
+                'page' => 'hhlc-settings',
                 'updated' => 'true'
             ),
             admin_url('admin.php')
