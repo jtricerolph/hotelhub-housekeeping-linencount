@@ -65,7 +65,7 @@ class HotelHub_Housekeeping_LinenCount {
      */
     public function check_required_plugins() {
         $required_plugins = array(
-            'hotelhub-app/hotelhub-app.php' => 'Hotel Hub App',
+            'hotel-hub-app/hotel-hub-app.php' => 'Hotel Hub App',
             'hotelhubmodule-housekeeping-dailylist/hotelhubmodule-housekeeping-dailylist.php' => 'Hotel Hub Housekeeping Daily List'
         );
 
@@ -153,7 +153,7 @@ class HotelHub_Housekeeping_LinenCount {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
-        if (!is_plugin_active('hotelhub-app/hotelhub-app.php')) {
+        if (!is_plugin_active('hotel-hub-app/hotel-hub-app.php')) {
             wp_die(
                 'Hotel Hub Linen Count Module requires Hotel Hub App to be installed and activated.',
                 'Plugin Dependency Error',
