@@ -102,10 +102,6 @@ class HotelHub_Housekeeping_LinenCount {
      * Load required files
      */
     private function load_dependencies() {
-        // Only load if dependencies are met
-        if (!function_exists('hha') || !class_exists('HHDL_Core')) {
-            return;
-        }
 
         require_once HHLC_PLUGIN_DIR . 'includes/class-hhlc-core.php';
         require_once HHLC_PLUGIN_DIR . 'includes/class-hhlc-settings.php';
