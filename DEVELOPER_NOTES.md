@@ -193,104 +193,48 @@ __('Translatable String', 'different-domain')  // Bad
 ```
 
 ## Checklist for New Modules
-n- [ ] Reports use `->register_report()` method (not array)
 
 Before pushing to production:
 
-- [ ] Module registration uses `->register_module()` method + ALL getter methods (including get_config())
-- [ ] WFA permissions use `->register_permission()` method (not array)
-- [ ] Plugin dependency names match actual directory names
-- [ ] No premature dependency checks in `load_dependencies()`
-- [ ] Database tables use `$wpdb->prefix`
-- [ ] Text domain is consistent
-- [ ] Hook priorities allow Hotel Hub to load first
-- [ ] AJAX nonces match between localize and handlers
-- [ ] All required files are in git and pushed to GitHub
-
-## Testing Locally vs Production
-
-**Common environment differences:**
-- Plugin directory names (hyphens, case sensitivity)
-- File upload completeness (check all subdirectories uploaded)
-- PHP versions (7.4+ required)
-- WordPress versions (5.8+ required)
-
-## Quick Fix Commands
-
-**Update plugin from git on production:**
-```bash
-cd /path/to/wp-content/plugins/plugin-name
-git pull origin main
-```
-
-**Check file permissions:**
-```bash
-ls -la includes/  # Should show .php files
-ls -la admin/     # Should show .php files
-ls -la assets/    # Should show css/ and js/ directories
-```
-
-## Getting Help
-
-When stuck:
-1. Check debug.log: `wp-content/debug.log`
-2. Enable WP_DEBUG in wp-config.php
-3. Compare with working module (daily list)
-4. Check this file for common mistakes!
-
----
-
-**Last Updated:** 2024-12-02
-**Applies to:** Hotel Hub Module development
 
 ## ⚠️ CRITICAL #3: Reports Registration
 
-**WRONG WAY** (treats as array):
+**Reports use ARRAY pattern (NOT object method):**
+
 ```php
 public function register_report($reports) {
     $reports['report-id'] = array(
-        'title' => 'Report Title',
-        'description' => 'Description',
-        'callback' => array($this, 'render'),
-        // ...
+        'title' => __('Report Title', 'textdomain'),
+        'description' => __('Report Description', 'textdomain'),
+        'capability' => 'view_reports',
+        'callback' => array($this, 'render_report_page'),
+        'icon' => 'icon_name',
+        'department' => 'department_name'
     );
     return $reports;
 }
 ```
 
-**RIGHT WAY** (uses object method):
+**Unlike modules and permissions, reports DO NOT use an object method.**
+
+## ⚠️ CRITICAL #4: Required Getter Method - get_config()
+
+**ALL modules MUST implement get_config() method with 'id' field:**
+
 ```php
-public function register_report($reports_manager) {
-    $reports_manager->register_report(
-        'report-id',
-        __('Report Title', 'textdomain'),
-        __('Report Description', 'textdomain'),
-        array($this, 'render_report_page'),
-        'icon_name',
-        'department_name'
+public function get_config() {
+    return array(
+        'id' => 'module_id'
     );
 }
 ```
 
-**Error You'll Get:**
-```
-Fatal error: Cannot use object of type HHA_Reports as array
-```
-
-## ⚠️ CRITICAL #4: Required Getter Method - get_config()
-
-**ALL modules MUST implement get_config() method:**
-
-```php
-public function get_config() {
-    return array();
-}
-```
-
-**Error You'll Get:**
+**Errors You'll Get:**
 ```
 HHA_Modules: Module must implement get_config() method
+HHA_Modules: Module config missing required field: id
 ```
 
-Even if your module doesn't have configuration, you must return an empty array.
+The 'id' field is required - cannot be an empty array.
+
 
