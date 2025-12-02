@@ -48,12 +48,12 @@ class HHLC_Reports {
      */
     private function init_hooks() {
         // Register with Hotel Hub reports system
-        add_filter('hha_register_reports', array($this, 'register_report'));
+        add_action('hha_register_reports', array($this, 'register_report'));
 
         // AJAX handlers for calendar data
-        add_action('wp_ajax_hhdl_get_linen_calendar_data', array($this, 'ajax_get_calendar_data'));
-        add_action('wp_ajax_hhdl_get_linen_day_details', array($this, 'ajax_get_day_details'));
-        add_action('wp_ajax_hhdl_export_linen_report', array($this, 'ajax_export_report'));
+        add_action('wp_ajax_hhlc_get_linen_calendar_data', array($this, 'ajax_get_calendar_data'));
+        add_action('wp_ajax_hhlc_get_linen_day_details', array($this, 'ajax_get_day_details'));
+        add_action('wp_ajax_hhlc_export_linen_report', array($this, 'ajax_export_report'));
 
         // Enqueue assets
         add_action('admin_enqueue_scripts', array($this, 'enqueue_report_assets'));
@@ -61,19 +61,18 @@ class HHLC_Reports {
 
     /**
      * Register the linen report
-     * Note: Filter passes HHA_Reports object but expects array return
+     *
+     * @param HHA_Reports $reports Reports manager instance
      */
     public function register_report($reports) {
-        return array(
-            'linen-counts' => array(
-                'title' => __('Linen Count Report', 'hhlc'),
-                'description' => __('View and analyze soiled linen counts', 'hhlc'),
-                'capability' => 'view_reports',
-                'callback' => array($this, 'render_report_page'),
-                'icon' => 'dry_cleaning',
-                'department' => 'housekeeping'
-            )
-        );
+        $reports->register('hhlc-linen-counts', array(
+            'title' => __('Linen Count Report', 'hhlc'),
+            'description' => __('View and analyze soiled linen counts', 'hhlc'),
+            'capability' => 'view_reports',
+            'callback' => array($this, 'render_report_page'),
+            'module' => 'housekeeping-linen-count',
+            'icon' => 'dashicons-admin-generic'
+        ));
     }
 
     /**
@@ -195,7 +194,7 @@ class HHLC_Reports {
      */
     public function ajax_get_calendar_data() {
         // Verify nonce
-        if (!check_ajax_referer('hhdl_ajax_nonce', 'nonce', false)) {
+        if (!check_ajax_referer('hhlc_ajax_nonce', 'nonce', false)) {
             wp_send_json_error('Invalid nonce');
             return;
         }
@@ -330,7 +329,7 @@ class HHLC_Reports {
      */
     public function ajax_get_day_details() {
         // Verify nonce
-        if (!check_ajax_referer('hhdl_ajax_nonce', 'nonce', false)) {
+        if (!check_ajax_referer('hhlc_ajax_nonce', 'nonce', false)) {
             wp_send_json_error('Invalid nonce');
             return;
         }
@@ -370,7 +369,7 @@ class HHLC_Reports {
         // Get linen items configuration
         $linen_items = array();
         if ($location_id > 0) {
-            $settings = get_option('hhdl_location_settings', array());
+            $settings = get_option('hhlc_location_settings', array());
             $location_settings = isset($settings[$location_id]) ? $settings[$location_id] : array();
             $linen_items = isset($location_settings['linen_items']) ? $location_settings['linen_items'] : array();
         }
@@ -493,7 +492,7 @@ class HHLC_Reports {
      */
     public function ajax_export_report() {
         // Verify nonce
-        if (!check_ajax_referer('hhdl_ajax_nonce', 'nonce', false)) {
+        if (!check_ajax_referer('hhlc_ajax_nonce', 'nonce', false)) {
             wp_send_json_error('Invalid nonce');
             return;
         }
@@ -697,8 +696,8 @@ class HHLC_Reports {
                     url: ajaxurl,
                     type: 'POST',
                     data: {
-                        action: 'hhdl_get_linen_calendar_data',
-                        nonce: '" . wp_create_nonce('hhdl_ajax_nonce') . "',
+                        action: 'hhlc_get_linen_calendar_data',
+                        nonce: '" . wp_create_nonce('hhlc_ajax_nonce') . "',
                         location_id: locationId,
                         month: month
                     },
@@ -719,8 +718,8 @@ class HHLC_Reports {
                     url: ajaxurl,
                     type: 'POST',
                     data: {
-                        action: 'hhdl_get_linen_day_details',
-                        nonce: '" . wp_create_nonce('hhdl_ajax_nonce') . "',
+                        action: 'hhlc_get_linen_day_details',
+                        nonce: '" . wp_create_nonce('hhlc_ajax_nonce') . "',
                         location_id: locationId,
                         date: date
                     },
@@ -765,8 +764,8 @@ class HHLC_Reports {
                     url: ajaxurl,
                     type: 'POST',
                     data: {
-                        action: 'hhdl_export_linen_report',
-                        nonce: '" . wp_create_nonce('hhdl_ajax_nonce') . "',
+                        action: 'hhlc_export_linen_report',
+                        nonce: '" . wp_create_nonce('hhlc_ajax_nonce') . "',
                         location_id: locationId,
                         start_date: startDate,
                         end_date: endDate,
