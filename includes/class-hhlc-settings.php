@@ -84,6 +84,10 @@ class HHLC_Settings {
      * Render settings card for module
      */
     public function render_settings_card($location_id = null) {
+        // Debug: Method called
+        error_log('HHLC: render_settings_card called with location_id: ' . var_export($location_id, true));
+        echo '<!-- HHLC: render_settings_card called -->';
+        
         // Get location_id from various sources if not provided
         if (empty($location_id)) {
             if (isset($_GET['location_id'])) {
@@ -96,9 +100,16 @@ class HHLC_Settings {
         }
         
         // Debug output
+        error_log('HHLC: Final location_id = ' . $location_id);
         echo '<!-- HHLC Debug: location_id = ' . esc_html($location_id) . ' -->';
         
-        $this->render_settings_section($location_id);
+        try {
+            $this->render_settings_section($location_id);
+            error_log('HHLC: render_settings_section completed');
+        } catch (Exception $e) {
+            error_log('HHLC Error: ' . $e->getMessage());
+            echo '<!-- HHLC Error: ' . esc_html($e->getMessage()) . ' -->';
+        }
     }
 
     /**
