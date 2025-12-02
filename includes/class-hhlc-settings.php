@@ -80,10 +80,23 @@ class HHLC_Settings {
         return $sections;
     }
 
-    /**
      * Render settings card for module
      */
-    public function render_settings_card($location_id) {
+    public function render_settings_card($location_id = null) {
+        // Get location_id from various sources if not provided
+        if (empty($location_id)) {
+            if (isset($_GET['location_id'])) {
+                $location_id = intval($_GET['location_id']);
+            } elseif (function_exists('hha') && method_exists(hha(), 'get_current_location_id')) {
+                $location_id = hha()->get_current_location_id();
+            } else {
+                $location_id = 0;
+            }
+        }
+        
+        // Debug output
+        echo '<!-- HHLC Debug: location_id = ' . esc_html($location_id) . ' -->';
+        
         $this->render_settings_section($location_id);
     }
 
