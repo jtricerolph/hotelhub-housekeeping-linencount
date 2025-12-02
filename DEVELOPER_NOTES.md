@@ -200,13 +200,14 @@ Before pushing to production:
 
 ## ⚠️ CRITICAL #3: Reports Registration
 
-**Reports use add_report() OBJECT METHOD:**
+**Reports filter passes object but expects ARRAY RETURN:**
 
 ```php
 public function register_report($reports) {
-    $reports->add_report(
-        'report-id',
-        array(
+    // $reports is HHA_Reports object but has no methods
+    // Just return an array directly
+    return array(
+        'report-id' => array(
             'title' => __('Report Title', 'textdomain'),
             'description' => __('Report Description', 'textdomain'),
             'capability' => 'view_reports',
@@ -218,10 +219,13 @@ public function register_report($reports) {
 }
 ```
 
-**Error You'll Get if using array syntax:**
+**Error You'll Get if trying object methods:**
 ```
-Fatal error: Cannot use object of type HHA_Reports as array
+Fatal error: Call to undefined method HHA_Reports::add_report()
+Fatal error: Call to undefined method HHA_Reports::register_report()
 ```
+
+**Note:** HHA_Reports object is passed as parameter but has no usable methods. Ignore it and return array.
 
 ## ⚠️ CRITICAL #4: Required Getter Method - get_config()
 
