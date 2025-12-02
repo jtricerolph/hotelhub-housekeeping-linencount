@@ -32,27 +32,33 @@
      * Initialize count up/down buttons
      */
     function initLinenCountButtons() {
+        console.log('HHLC: Initializing linen count buttons');
+
         // Count up button
-        $(document).on('click', '.hhlc-linen-item .linen-count-up:not(:disabled)', function(e) {
+        $(document).on('click', '.linen-count-up:not(:disabled)', function(e) {
             e.preventDefault();
+            console.log('HHLC: Count up clicked');
             const $item = $(this).closest('.hhlc-linen-item');
             const $input = $item.find('.linen-count-value');
             const currentValue = parseInt($input.val()) || 0;
             const newValue = currentValue + 1;
 
+            console.log('HHLC: Incrementing from', currentValue, 'to', newValue);
             $input.val(newValue);
             updateLinenCount($item.data('item-id'), newValue);
             highlightChangedItem($item, $input);
         });
 
         // Count down button
-        $(document).on('click', '.hhlc-linen-item .linen-count-down:not(:disabled)', function(e) {
+        $(document).on('click', '.linen-count-down:not(:disabled)', function(e) {
             e.preventDefault();
+            console.log('HHLC: Count down clicked');
             const $item = $(this).closest('.hhlc-linen-item');
             const $input = $item.find('.linen-count-value');
             const currentValue = parseInt($input.val()) || 0;
             const newValue = Math.max(0, currentValue - 1);
 
+            console.log('HHLC: Decrementing from', currentValue, 'to', newValue);
             $input.val(newValue);
             updateLinenCount($item.data('item-id'), newValue);
             highlightChangedItem($item, $input);
@@ -443,7 +449,13 @@
 
     // Initialize on document ready
     $(document).ready(function() {
+        console.log('HHLC: Document ready, checking for room list');
         if ($('#hhdl-room-list').length) {
+            console.log('HHLC: Room list found, initializing linen count');
+            initLinenCount();
+        } else {
+            console.log('HHLC: Room list not found, will initialize on modal open');
+            // Initialize anyway for modal content
             initLinenCount();
         }
     });
