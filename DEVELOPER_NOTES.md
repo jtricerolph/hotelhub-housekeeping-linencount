@@ -1,6 +1,45 @@
 # Developer Notes - Common Mistakes When Creating Hotel Hub Modules
 
-## ⚠️ CRITICAL: WFA Permissions Registration
+## ⚠️ CRITICAL #1: Module Registration
+
+**WRONG WAY** (treats as array):
+```php
+public function register_module($modules) {
+    $modules['module_id'] = array(
+        'id' => 'module_id',
+        'name' => 'Module Name',
+        // ...
+    );
+    return $modules;
+}
+```
+
+**RIGHT WAY** (uses object method + getter methods):
+```php
+public function register_module($modules_manager) {
+    $modules_manager->register_module($this);
+}
+
+// Add these getter methods:
+public function get_id() { return 'module_id'; }
+public function get_name() { return __('Module Name', 'textdomain'); }
+public function get_description() { return __('Description', 'textdomain'); }
+public function get_department() { return 'department_name'; }
+public function get_icon() { return 'material_icon'; }
+public function get_color() { return '#hexcolor'; }
+public function get_version() { return PLUGIN_VERSION; }
+public function get_requires() { return array('required_module'); }
+public function get_callback() { return array($this, 'render_page'); }
+public function get_settings_callback() { return array(Settings::instance(), 'render'); }
+public function get_supports() { return array('multi_location', 'reports'); }
+```
+
+**Error You'll Get:**
+```
+Fatal error: Cannot use object of type HHA_Modules as array
+```
+
+## ⚠️ CRITICAL #2: WFA Permissions Registration
 
 **WRONG WAY** (treats as array):
 ```php

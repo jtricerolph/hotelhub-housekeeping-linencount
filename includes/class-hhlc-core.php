@@ -58,22 +58,8 @@ class HHLC_Core {
     /**
      * Register module with Hotel Hub
      */
-    public function register_module($modules) {
-        $modules['linen_count'] = array(
-            'id' => 'linen_count',
-            'name' => 'Spoilt Linen Count',
-            'description' => 'Track and report soiled linen counts',
-            'department' => 'housekeeping',
-            'icon' => 'dry_cleaning',
-            'color' => '#8b4513', // Brown color for linen
-            'version' => HHLC_VERSION,
-            'requires' => array('daily_list'),
-            'callback' => null, // No separate page, integrates into daily list modal
-            'settings_callback' => array(HHLC_Settings::instance(), 'render_settings_card'),
-            'supports' => array('multi_location', 'reports', 'real_time_sync')
-        );
-
-        return $modules;
+    public function register_module($modules_manager) {
+        $modules_manager->register_module($this);
     }
 
     /**
@@ -103,6 +89,54 @@ class HHLC_Core {
             __('Allow users to access linen count reports', 'hhlc'),
             'Housekeeping - Linen Count'
         );
+    }
+
+    /**
+     * Module interface methods required by HHA_Modules
+     */
+
+    public function get_id() {
+        return 'linen_count';
+    }
+
+    public function get_name() {
+        return __('Spoilt Linen Count', 'hhlc');
+    }
+
+    public function get_description() {
+        return __('Track and report soiled linen counts', 'hhlc');
+    }
+
+    public function get_department() {
+        return 'housekeeping';
+    }
+
+    public function get_icon() {
+        return 'dry_cleaning';
+    }
+
+    public function get_color() {
+        return '#8b4513';
+    }
+
+    public function get_version() {
+        return HHLC_VERSION;
+    }
+
+    public function get_requires() {
+        return array('daily_list');
+    }
+
+    public function get_callback() {
+        return null;
+    }
+
+    public function get_settings_callback() {
+        return array(HHLC_Settings::instance(), 'render_settings_card');
+    }
+
+    public function get_supports() {
+        return array('multi_location', 'reports', 'real_time_sync');
     }
 
     /**
