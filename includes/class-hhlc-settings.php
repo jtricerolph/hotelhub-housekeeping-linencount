@@ -93,7 +93,7 @@ class HHLC_Settings {
     /**
      * Render settings card for module
      */
-    public function render_settings_card($location_id = null) {
+    public static function render_settings_card($location_id = null) {
         // Debug: Method called
         error_log('HHLC: render_settings_card called with location_id: ' . var_export($location_id, true));
         echo '<!-- HHLC: render_settings_card called -->';
@@ -114,7 +114,7 @@ class HHLC_Settings {
         echo '<!-- HHLC Debug: location_id = ' . esc_html($location_id) . ' -->';
         
         try {
-            $this->render_settings_section($location_id);
+            self::render_settings_section($location_id);
             error_log('HHLC: render_settings_section completed');
         } catch (Exception $e) {
             error_log('HHLC Error: ' . $e->getMessage());
@@ -126,7 +126,7 @@ class HHLC_Settings {
      * Render settings section
      */
     public function render_settings_section($location_id) {
-        $settings = $this->get_location_settings($location_id);
+        $settings = self::get_location_settings($location_id);
         $linen_items = isset($settings['linen_items']) ? $settings['linen_items'] : array();
         $enabled = isset($settings['enabled']) ? $settings['enabled'] : true;
         ?>
@@ -151,7 +151,7 @@ class HHLC_Settings {
                 <div class="hhlc-linen-items-list" id="linen-items-<?php echo esc_attr($location_id); ?>">
                     <?php if (!empty($linen_items)): ?>
                         <?php foreach ($linen_items as $index => $item): ?>
-                            <?php $this->render_linen_item_row($location_id, $index, $item); ?>
+                            <?php self::render_linen_item_row($location_id, $index, $item); ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
@@ -249,7 +249,7 @@ class HHLC_Settings {
     /**
      * Render a single linen item row
      */
-    private function render_linen_item_row($location_id, $index, $item) {
+    private static function render_linen_item_row($location_id, $index, $item) {
         $defaults = array(
             'id' => '',
             'name' => '',
@@ -382,7 +382,7 @@ class HHLC_Settings {
     /**
      * Get settings for a location
      */
-    public function get_location_settings($location_id) {
+    public static function get_location_settings($location_id) {
         $all_settings = get_option(self::OPTION_NAME, array());
         return isset($all_settings[$location_id]) ? $all_settings[$location_id] : array();
     }
@@ -391,7 +391,7 @@ class HHLC_Settings {
      * Get linen items for a location
      */
     public function get_linen_items($location_id) {
-        $settings = $this->get_location_settings($location_id);
+        $settings = self::get_location_settings($location_id);
         return isset($settings['linen_items']) ? $settings['linen_items'] : array();
     }
 
@@ -399,7 +399,7 @@ class HHLC_Settings {
      * Check if module is enabled for location
      */
     public function is_enabled_for_location($location_id) {
-        $settings = $this->get_location_settings($location_id);
+        $settings = self::get_location_settings($location_id);
         return isset($settings['enabled']) ? $settings['enabled'] : true;
     }
 }
