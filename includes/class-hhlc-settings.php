@@ -125,7 +125,7 @@ class HHLC_Settings {
     /**
      * Render settings section
      */
-    public function render_settings_section($location_id) {
+    private static function render_settings_section($location_id) {
         $settings = self::get_location_settings($location_id);
         $linen_items = isset($settings['linen_items']) ? $settings['linen_items'] : array();
         $enabled = isset($settings['enabled']) ? $settings['enabled'] : true;
