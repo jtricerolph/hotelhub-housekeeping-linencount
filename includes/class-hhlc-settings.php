@@ -80,6 +80,7 @@ class HHLC_Settings {
         return $sections;
     }
 
+    /**
      * Render settings card for module
      */
     public function render_settings_card($location_id = null) {
