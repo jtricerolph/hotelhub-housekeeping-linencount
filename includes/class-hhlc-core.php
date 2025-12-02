@@ -139,6 +139,9 @@ class HHLC_Core {
         return array('multi_location', 'reports', 'real_time_sync');
     }
 
+    public function get_config() {
+        return array();
+    }
     /**
      * Enqueue frontend assets
      */
