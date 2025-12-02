@@ -1,0 +1,242 @@
+/**
+ * Admin Styles for Linen Count Module
+ *
+ * @package HotelHub_Housekeeping_LinenCount
+ * @since 1.0.0
+ */
+
+/* Settings Section */
+.hhlc-settings-section {
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.hhlc-setting-row {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Toggle Switch */
+.hhlc-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.hhlc-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.hhlc-toggle-slider {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 24px;
+    transition: background 0.3s;
+    margin-right: 10px;
+}
+
+.hhlc-toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s;
+}
+
+.hhlc-toggle input:checked + .hhlc-toggle-slider {
+    background: #10b981;
+}
+
+.hhlc-toggle input:checked + .hhlc-toggle-slider::before {
+    transform: translateX(26px);
+}
+
+.hhlc-toggle-label {
+    font-weight: 500;
+}
+
+/* Linen Items Configuration */
+.hhlc-linen-items-config {
+    margin-top: 20px;
+}
+
+.hhlc-linen-items-config h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.hhlc-linen-items-config .description {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+.hhlc-linen-items-list {
+    margin-bottom: 15px;
+    min-height: 50px;
+}
+
+.hhlc-sortable-placeholder {
+    height: 50px;
+    background: #f0f0f0;
+    border: 2px dashed #ccc;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.hhlc-linen-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.hhlc-linen-item-row:hover {
+    background: #f5f5f5;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hhlc-linen-item-row.ui-sortable-helper {
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    cursor: grabbing;
+}
+
+.hhlc-drag-handle {
+    cursor: move;
+    color: #666;
+    font-size: 18px;
+}
+
+.hhlc-drag-handle:hover {
+    color: #333;
+}
+
+.hhlc-linen-item-row input[type="text"],
+.hhlc-linen-item-row input[type="number"] {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.hhlc-linen-item-row input[type="text"]:focus,
+.hhlc-linen-item-row input[type="number"]:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 1px #10b981;
+}
+
+.hhlc-linen-item-row .linen-item-name {
+    flex: 1;
+    min-width: 150px;
+}
+
+.hhlc-linen-item-row .linen-item-shortcode {
+    width: 100px;
+}
+
+.hhlc-linen-item-row .linen-item-size {
+    width: 120px;
+}
+
+.hhlc-linen-item-row .linen-item-pack-qty,
+.hhlc-linen-item-row .linen-item-target-stock {
+    width: 100px;
+}
+
+.hhlc-remove-linen-item {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.hhlc-remove-linen-item:hover {
+    background: #c82333;
+}
+
+.hhlc-remove-linen-item .dashicons {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+}
+
+.hhlc-add-linen-item {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hhlc-add-linen-item:hover {
+    background: #0d9668;
+}
+
+.hhlc-add-linen-item .dashicons {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+}
+
+/* Empty State */
+.hhlc-linen-items-list:empty::after {
+    content: 'No linen items configured. Click "Add Linen Item" to get started.';
+    display: block;
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    background: #f9f9f9;
+    border: 2px dashed #ddd;
+    border-radius: 4px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .hhlc-linen-item-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .hhlc-linen-item-row input {
+        width: 100% !important;
+    }
+
+    .hhlc-drag-handle {
+        align-self: center;
+    }
+
+    .hhlc-remove-linen-item {
+        width: 100%;
+        justify-content: center;
+    }
+}
