@@ -49,6 +49,8 @@ class HHLC_Settings {
      * Initialize hooks
      */
     private function init_hooks() {
+        error_log('HHLC Settings: init_hooks called');
+        
         // Register settings
         add_action('admin_init', array($this, 'register_settings'));
 
@@ -57,12 +59,15 @@ class HHLC_Settings {
 
         // Hook into Hotel Hub settings page
         add_filter('hha_module_settings_sections', array($this, 'add_settings_section'), 10, 2);
+        
+        error_log('HHLC Settings: Hooks registered');
     }
 
     /**
      * Register settings with WordPress
      */
     public function register_settings() {
+        error_log('HHLC Settings: register_settings called');
         register_setting('hhlc_settings_group', self::OPTION_NAME, array(
             'sanitize_callback' => array($this, 'sanitize_settings')
         ));
@@ -72,11 +77,16 @@ class HHLC_Settings {
      * Add settings section to Hotel Hub settings page
      */
     public function add_settings_section($sections, $location_id) {
+        error_log('HHLC Settings: add_settings_section called with location_id: ' . $location_id);
+        error_log('HHLC Settings: Existing sections: ' . print_r(array_keys($sections), true));
+        
         $sections['linen_count'] = array(
             'title' => 'Linen Count Configuration',
             'callback' => array($this, 'render_settings_section'),
             'location_id' => $location_id
         );
+        
+        error_log('HHLC Settings: Added linen_count section');
         return $sections;
     }
 
