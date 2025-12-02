@@ -61,11 +61,11 @@ class HHLC_Reports {
 
     /**
      * Register the linen report
+     * Note: Filter passes HHA_Reports object but expects array return
      */
     public function register_report($reports) {
-        $reports->add_report(
-            'linen-counts',
-            array(
+        return array(
+            'linen-counts' => array(
                 'title' => __('Linen Count Report', 'hhlc'),
                 'description' => __('View and analyze soiled linen counts', 'hhlc'),
                 'capability' => 'view_reports',
