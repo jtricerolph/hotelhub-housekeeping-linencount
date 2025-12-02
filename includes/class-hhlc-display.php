@@ -127,9 +127,6 @@ class HHLC_Display {
                                    data-original="<?php echo esc_attr($current_count); ?>" />
                         </div>
                         <button class="linen-count-down" <?php echo $is_locked ? 'disabled' : ''; ?>>▼</button>
-                        <?php if (!empty($item['size'])): ?>
-                        <div class="linen-item-size"><?php echo esc_html($item['size']); ?></div>
-                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>

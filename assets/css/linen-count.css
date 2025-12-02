@@ -4,18 +4,29 @@
  * Touch-friendly interface for linen counting
  */
 
-/* Main linen section in modal */
+/* Main linen section in modal - matches tasks section styling */
 .hhlc-linen-section {
-    padding: 20px;
-    border-top: 2px solid #e0e0e0;
-    background-color: #fafafa;
+    margin-bottom: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.hhlc-linen-section .hhdl-section-header {
+    margin: -12px -12px 12px -12px;
+    padding: 10px 12px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 6px 6px 0 0;
 }
 
 .hhlc-linen-section h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #333;
-    font-size: 1.1em;
+    margin: 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 600;
 }
 
@@ -30,24 +41,24 @@
     cursor: not-allowed;
 }
 
-/* Grid layout for linen items */
+/* Grid layout for linen items - compressed */
 .hhlc-linen-items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
     max-width: 100%;
 }
 
-/* Individual linen item */
+/* Individual linen item - compressed */
 .hhlc-linen-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px;
+    padding: 8px 6px;
     background: white;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s ease;
 }
 
@@ -60,22 +71,22 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Shortcode display */
+/* Shortcode display - compressed */
 .linen-shortcode {
     font-weight: bold;
-    font-size: 16px;
+    font-size: 13px;
     color: #333;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     text-align: center;
-    min-height: 24px;
+    min-height: 18px;
 }
 
-/* Count buttons - Touch friendly */
+/* Count buttons - compressed and touch friendly */
 .linen-count-up,
 .linen-count-down {
-    width: 60px;
-    height: 40px;
-    font-size: 20px;
+    width: 50px;
+    height: 32px;
+    font-size: 18px;
     line-height: 1;
     background: #0073aa;
     color: white;
@@ -88,12 +99,12 @@
 }
 
 .linen-count-up {
-    border-radius: 8px 8px 0 0;
+    border-radius: 6px 6px 0 0;
     margin-bottom: 2px;
 }
 
 .linen-count-down {
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 6px 6px;
     margin-top: 2px;
 }
 
@@ -117,12 +128,12 @@
     opacity: 0.6;
 }
 
-/* Count display */
+/* Count display - compressed */
 .linen-count-display {
     background: white;
     border: 2px solid #0073aa;
-    width: 60px;
-    height: 50px;
+    width: 50px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -132,7 +143,7 @@
     width: 100%;
     height: 100%;
     text-align: center;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     border: none;
     background: transparent;

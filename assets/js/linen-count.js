@@ -107,7 +107,7 @@
      * Update the state of the submit button
      */
     function updateSubmitButtonState() {
-        const $submitBtn = $('.hhdl-submit-linen-count');
+        const $submitBtn = $('.hhlc-submit-linen-count');
         const hasChanges = $('.hhlc-linen-item.changed').length > 0;
 
         if (hasChanges) {
@@ -131,7 +131,7 @@
      * Initialize submit handler
      */
     function initLinenSubmitHandler() {
-        $(document).on('click', '.hhdl-submit-linen-count', function(e) {
+        $(document).on('click', '.hhlc-submit-linen-count', function(e) {
             e.preventDefault();
 
             const $button = $(this);
@@ -177,8 +177,8 @@
                         $section.find('.linen-count-value').prop('readonly', true);
 
                         // Change button to edit mode
-                        $button.removeClass('button-primary hhdl-submit-linen-count')
-                               .addClass('hhdl-edit-linen-count')
+                        $button.removeClass('button-primary hhlc-submit-linen-count')
+                               .addClass('hhlc-edit-linen-count')
                                .text('Edit');
 
                         // Update original values
@@ -233,7 +233,7 @@
      * Initialize edit handler
      */
     function initLinenEditHandler() {
-        $(document).on('click', '.hhdl-edit-linen-count', function(e) {
+        $(document).on('click', '.hhlc-edit-linen-count', function(e) {
             e.preventDefault();
 
             const $button = $(this);
@@ -266,8 +266,8 @@
                         $section.find('button.linen-count-up, button.linen-count-down').prop('disabled', false);
 
                         // Change button back to submit mode
-                        $button.removeClass('hhdl-edit-linen-count')
-                               .addClass('button-primary hhdl-submit-linen-count')
+                        $button.removeClass('hhlc-edit-linen-count')
+                               .addClass('button-primary hhlc-submit-linen-count')
                                .prop('disabled', false)
                                .text('Submit Count');
 
@@ -449,10 +449,10 @@
     });
 
     // Export for external use
-    window.HHDL_Linen = {
+    window.HHLC_Linen = {
         init: initLinenCount,
         getCurrentState: function() { return currentLinenState; },
-        submitCount: function() { $('.hhdl-submit-linen-count').click(); }
+        submitCount: function() { $('.hhlc-submit-linen-count').click(); }
     };
 
 })(jQuery);
