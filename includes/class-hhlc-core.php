@@ -141,7 +141,13 @@ class HHLC_Core {
 
     public function get_config() {
         return array(
-            'id' => 'linen_count'
+            'id' => $this->get_id(),
+            'name' => $this->get_name(),
+            'description' => $this->get_description(),
+            'department' => $this->get_department(),
+            'icon' => $this->get_icon(),
+            'color' => $this->get_color(),
+            'version' => $this->get_version()
         );
     }
     /**
