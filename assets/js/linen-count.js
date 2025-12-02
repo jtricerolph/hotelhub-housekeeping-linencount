@@ -167,7 +167,7 @@
                 url: hhlcAjax.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'hhdl_submit_linen_count',
+                    action: 'hhlc_submit_linen_count',
                     nonce: hhlcAjax.nonce,
                     location_id: locationId,
                     room_id: roomId,
@@ -259,7 +259,7 @@
                 url: hhlcAjax.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'hhdl_unlock_linen_count',
+                    action: 'hhlc_unlock_linen_count',
                     nonce: hhlcAjax.nonce,
                     location_id: locationId,
                     room_id: roomId,
