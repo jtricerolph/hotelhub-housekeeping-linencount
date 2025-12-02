@@ -270,6 +270,7 @@
                         // Update UI to unlocked state
                         $section.removeClass('locked');
                         $section.find('button.linen-count-up, button.linen-count-down').prop('disabled', false);
+                        $section.find('.linen-count-value').prop('readonly', false);
 
                         // Change button back to submit mode
                         $button.removeClass('hhlc-edit-linen-count')
