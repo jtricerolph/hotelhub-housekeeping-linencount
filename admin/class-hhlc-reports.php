@@ -62,15 +62,16 @@ class HHLC_Reports {
     /**
      * Register the linen report
      */
-    public function register_report($reports_manager) {
-        $reports_manager->register_report(
-            'linen-counts',
-            __('Linen Count Report', 'hhlc'),
-            __('View and analyze soiled linen counts', 'hhlc'),
-            array($this, 'render_report_page'),
-            'dry_cleaning',
-            'housekeeping'
+    public function register_report($reports) {
+        $reports['linen-counts'] = array(
+            'title' => __('Linen Count Report', 'hhlc'),
+            'description' => __('View and analyze soiled linen counts', 'hhlc'),
+            'capability' => 'view_reports',
+            'callback' => array($this, 'render_report_page'),
+            'icon' => 'dry_cleaning',
+            'department' => 'housekeeping'
         );
+        return $reports;
     }
 
     /**

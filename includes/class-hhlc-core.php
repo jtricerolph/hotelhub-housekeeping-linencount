@@ -140,7 +140,9 @@ class HHLC_Core {
     }
 
     public function get_config() {
-        return array();
+        return array(
+            'id' => 'linen_count'
+        );
     }
     /**
      * Enqueue frontend assets
