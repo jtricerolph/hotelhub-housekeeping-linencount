@@ -10,14 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Get locations from Hotel Hub
-$locations = array();
-if (function_exists('hha') && method_exists(hha()->hotels, 'get_all_locations')) {
-    $locations = hha()->hotels->get_all_locations();
-}
-
-// Get current settings
-$all_settings = get_option(HHLC_Settings::OPTION_NAME, array());
+// Variables $locations and $all_settings are prepared by render_settings_card()
 ?>
 
 <div class="wrap hhlc-settings-wrap">

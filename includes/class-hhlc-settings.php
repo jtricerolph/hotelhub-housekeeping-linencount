@@ -76,6 +76,17 @@ class HHLC_Settings {
     public static function render_settings_card($location_id = null) {
         error_log('HHLC: render_settings_card called');
 
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'hhlc'));
+        }
+
+        // Get locations from Hotel Hub App
+        $locations = self::get_locations();
+
+        // Get current settings
+        $all_settings = get_option(self::OPTION_NAME, array());
+
         // Load the settings template
         $template_path = plugin_dir_path(dirname(__FILE__)) . 'admin/views/settings.php';
 
@@ -85,6 +96,36 @@ class HHLC_Settings {
             error_log('HHLC Error: Settings template not found at ' . $template_path);
             echo '<div class="notice notice-error"><p>Settings template not found.</p></div>';
         }
+    }
+
+    /**
+     * Get locations from Hotel Hub App
+     *
+     * @return array Locations array
+     */
+    public static function get_locations() {
+        // Check if Hotel Hub App is available
+        if (!function_exists('hha')) {
+            return array();
+        }
+
+        // Get all active hotels
+        $hotels = hha()->hotels->get_active();
+
+        if (empty($hotels)) {
+            return array();
+        }
+
+        // Format as location array
+        $locations = array();
+        foreach ($hotels as $hotel) {
+            $locations[] = array(
+                'id'   => $hotel->id,
+                'name' => $hotel->name
+            );
+        }
+
+        return $locations;
     }
 
     /**
