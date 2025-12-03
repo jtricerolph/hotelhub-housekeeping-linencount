@@ -79,7 +79,18 @@ class HHLC_Reports {
      * Render the report page
      */
     public function render_report_page() {
+        // Get locations
+        $locations = array();
+        if (function_exists('hha')) {
+            $locations = hha()->hotels->get_active();
+        }
+
+        // Default to first location if none selected
         $current_location = isset($_GET['location_id']) ? intval($_GET['location_id']) : 0;
+        if ($current_location === 0 && !empty($locations)) {
+            $current_location = $locations[0]->id;
+        }
+
         $current_month = isset($_GET['month']) ? sanitize_text_field($_GET['month']) : date('Y-m');
         ?>
         <div class="wrap hhdl-linen-report-wrap">
@@ -90,19 +101,21 @@ class HHLC_Reports {
                     <input type="hidden" name="page" value="<?php echo esc_attr($_GET['page']); ?>" />
 
                     <!-- Location Selector -->
-                    <?php if (function_exists('hha')) :
-                        $locations = hha()->hotels->get_active();
-                        if (count($locations) > 1) : ?>
-                    <select name="location_id" id="location-selector">
-                        <option value="">All Locations</option>
-                        <?php foreach ($locations as $location) : ?>
-                            <option value="<?php echo esc_attr($location->id); ?>"
-                                    <?php selected($current_location, $location->id); ?>>
-                                <?php echo esc_html($location->name); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php endif; endif; ?>
+                    <?php if (!empty($locations)) : ?>
+                        <?php if (count($locations) > 1) : ?>
+                            <select name="location_id" id="location-selector">
+                                <?php foreach ($locations as $location) : ?>
+                                    <option value="<?php echo esc_attr($location->id); ?>"
+                                            <?php selected($current_location, $location->id); ?>>
+                                        <?php echo esc_html($location->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else : ?>
+                            <input type="hidden" name="location_id" value="<?php echo esc_attr($locations[0]->id); ?>" />
+                            <strong><?php echo esc_html($locations[0]->name); ?></strong>
+                        <?php endif; ?>
+                    <?php endif; ?>
 
                     <!-- Month Selector -->
                     <input type="month" name="month" id="month-selector"
@@ -130,8 +143,10 @@ class HHLC_Reports {
 
                     <div id="linen-calendar" class="hhdl-calendar-grid"
                          data-location="<?php echo esc_attr($current_location); ?>"
-                         data-month="<?php echo esc_attr($current_month); ?>">
+                         data-month="<?php echo esc_attr($current_month); ?>"
+                         data-initial-location="<?php echo esc_attr($current_location); ?>">
                         <!-- Calendar will be populated via JavaScript -->
+                        <p style="text-align: center; padding: 20px;">Loading calendar...</p>
                     </div>
                 </div>
             </div>
@@ -671,26 +686,42 @@ class HHLC_Reports {
             // Calendar navigation
             $('.prev-month').on('click', function() {
                 var currentMonth = $('#linen-calendar').data('month');
-                var newMonth = moment(currentMonth).subtract(1, 'month').format('YYYY-MM');
+                var date = new Date(currentMonth + '-01');
+                date.setMonth(date.getMonth() - 1);
+                var newMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
                 $('#month-selector').val(newMonth);
                 $('#linen-calendar').data('month', newMonth);
-                $('.calendar-month-year').text(moment(newMonth).format('MMMM YYYY'));
+                $('.calendar-month-year').text(formatMonthYear(newMonth));
                 loadCalendar();
             });
 
             $('.next-month').on('click', function() {
                 var currentMonth = $('#linen-calendar').data('month');
-                var newMonth = moment(currentMonth).add(1, 'month').format('YYYY-MM');
+                var date = new Date(currentMonth + '-01');
+                date.setMonth(date.getMonth() + 1);
+                var newMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
                 $('#month-selector').val(newMonth);
                 $('#linen-calendar').data('month', newMonth);
-                $('.calendar-month-year').text(moment(newMonth).format('MMMM YYYY'));
+                $('.calendar-month-year').text(formatMonthYear(newMonth));
                 loadCalendar();
             });
 
+            // Helper function to format month/year
+            function formatMonthYear(monthStr) {
+                var date = new Date(monthStr + '-01');
+                var months = ['January', 'February', 'March', 'April', 'May', 'June',
+                             'July', 'August', 'September', 'October', 'November', 'December'];
+                return months[date.getMonth()] + ' ' + date.getFullYear();
+            }
+
             // Load calendar data
             function loadCalendar() {
-                var locationId = $('#location-selector').val() || 0;
+                var locationId = $('#location-selector').val() ||
+                                $('input[name=\"location_id\"]').val() ||
+                                $('#linen-calendar').data('initial-location') || 0;
                 var month = $('#linen-calendar').data('month');
+
+                console.log('HHLC Reports: Loading calendar for location ' + locationId + ', month ' + month);
 
                 $.ajax({
                     url: ajaxurl,
@@ -702,9 +733,16 @@ class HHLC_Reports {
                         month: month
                     },
                     success: function(response) {
+                        console.log('HHLC Reports: Calendar data received', response);
                         if (response.success) {
                             $('#linen-calendar').html(response.data.html);
+                        } else {
+                            $('#linen-calendar').html('<p>Error loading calendar data</p>');
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('HHLC Reports: Calendar load error', error);
+                        $('#linen-calendar').html('<p>Error loading calendar: ' + error + '</p>');
                     }
                 });
             }
@@ -712,7 +750,9 @@ class HHLC_Reports {
             // Day click handler
             $(document).on('click', '.calendar-day.has-data', function() {
                 var date = $(this).data('date');
-                var locationId = $('#location-selector').val() || 0;
+                var locationId = $('#location-selector').val() ||
+                                $('input[name=\"location_id\"]').val() ||
+                                $('#linen-calendar').data('initial-location') || 0;
 
                 $.ajax({
                     url: ajaxurl,
@@ -744,7 +784,9 @@ class HHLC_Reports {
             $('#generate-summary').on('click', function() {
                 var startDate = $('#summary-start-date').val();
                 var endDate = $('#summary-end-date').val();
-                var locationId = $('#location-selector').val() || 0;
+                var locationId = $('#location-selector').val() ||
+                                $('input[name=\"location_id\"]').val() ||
+                                $('#linen-calendar').data('initial-location') || 0;
 
                 // Load summary data
                 $('#summary-results').html('<p>Loading summary report...</p>');
@@ -758,7 +800,9 @@ class HHLC_Reports {
                 var format = $('input[name=\"export-format\"]:checked').val();
                 var startDate = $('#export-start-date').val();
                 var endDate = $('#export-end-date').val();
-                var locationId = $('#location-selector').val() || 0;
+                var locationId = $('#location-selector').val() ||
+                                $('input[name=\"location_id\"]').val() ||
+                                $('#linen-calendar').data('initial-location') || 0;
 
                 $.ajax({
                     url: ajaxurl,
