@@ -71,20 +71,22 @@ class HHLC_Heartbeat {
         $location_id = isset($monitor_data['location_id']) ? intval($monitor_data['location_id']) : 0;
         $last_check = isset($monitor_data['last_check']) ? sanitize_text_field($monitor_data['last_check']) : '';
         $viewing_date = isset($monitor_data['viewing_date']) ? sanitize_text_field($monitor_data['viewing_date']) : '';
+        $current_room = isset($monitor_data['current_room']) ? sanitize_text_field($monitor_data['current_room']) : '';
+        $modal_open = isset($monitor_data['modal_open']) ? (bool)$monitor_data['modal_open'] : false;
 
         if (!$location_id || !$last_check || !$viewing_date) {
             return $response;
         }
 
         // Record user activity
-        $this->record_activity(get_current_user_id(), $location_id, $viewing_date);
+        $this->record_activity(get_current_user_id(), $location_id, $viewing_date, $current_room, $modal_open);
 
         // Get recent linen count updates
         global $wpdb;
         $table_name = $wpdb->prefix . 'hhlc_linen_counts';
 
-        $updates = $wpdb->get_results($wpdb->prepare(
-            "SELECT lc.*,
+        // Build query - if modal is open and viewing specific room, only get updates for that room
+        $query = "SELECT lc.*,
                     u1.display_name as submitted_by_name,
                     u2.display_name as last_updated_by_name
             FROM {$table_name} lc
@@ -92,15 +94,25 @@ class HHLC_Heartbeat {
             LEFT JOIN {$wpdb->users} u2 ON lc.last_updated_by = u2.ID
             WHERE lc.location_id = %d
             AND lc.service_date = %s
-            AND (lc.submitted_at > %s OR (lc.last_updated_at IS NOT NULL AND lc.last_updated_at > %s))
-            ORDER BY GREATEST(lc.submitted_at, IFNULL(lc.last_updated_at, '0000-00-00')) DESC",
-            $location_id, $viewing_date, $last_check, $last_check
-        ));
+            AND (lc.submitted_at > %s OR (lc.last_updated_at IS NOT NULL AND lc.last_updated_at > %s))";
+
+        $query_params = array($location_id, $viewing_date, $last_check, $last_check);
+
+        // If modal is open and viewing a specific room, filter to that room only
+        if ($modal_open && !empty($current_room)) {
+            $query .= " AND lc.room_id = %s";
+            $query_params[] = $current_room;
+        }
+
+        $query .= " ORDER BY GREATEST(lc.submitted_at, IFNULL(lc.last_updated_at, '0000-00-00')) DESC";
+
+        $updates = $wpdb->get_results($wpdb->prepare($query, $query_params));
 
         if (!empty($updates)) {
             $response['hhlc_linen_updates'] = array(
                 'updates' => $updates,
-                'timestamp' => current_time('mysql')
+                'timestamp' => current_time('mysql'),
+                'for_room' => $current_room
             );
         }
 
@@ -124,7 +136,7 @@ class HHLC_Heartbeat {
     /**
      * Record user activity
      */
-    private function record_activity($user_id, $location_id, $viewing_date) {
+    private function record_activity($user_id, $location_id, $viewing_date, $current_room = '', $modal_open = false) {
         $transient_key = 'hhlc_active_' . $location_id . '_' . str_replace('-', '', $viewing_date);
         $users = get_transient($transient_key);
 
@@ -135,7 +147,9 @@ class HHLC_Heartbeat {
         $users[$user_id] = array(
             'user_id' => $user_id,
             'display_name' => wp_get_current_user()->display_name,
-            'last_active' => current_time('mysql')
+            'last_active' => current_time('mysql'),
+            'current_room' => $current_room,
+            'modal_open' => $modal_open
         );
 
         // Remove inactive users (more than 2 minutes old)

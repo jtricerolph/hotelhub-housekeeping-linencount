@@ -48,6 +48,7 @@ class HHLC_Ajax {
         add_action('wp_ajax_hhlc_submit_linen_count', array($this, 'submit_linen_count'));
         add_action('wp_ajax_hhlc_get_linen_counts', array($this, 'get_linen_counts'));
         add_action('wp_ajax_hhlc_unlock_linen_count', array($this, 'unlock_linen_count'));
+        add_action('wp_ajax_hhlc_autosave_linen_count', array($this, 'autosave_linen_count'));
     }
 
     /**
@@ -274,6 +275,126 @@ class HHLC_Ajax {
             wp_send_json_success(array('message' => 'Count unlocked for editing'));
         } else {
             wp_send_json_error('Failed to unlock count');
+        }
+    }
+
+    /**
+     * Auto-save linen count (saves as unlocked draft)
+     */
+    public function autosave_linen_count() {
+        // Verify nonce
+        if (!check_ajax_referer('hhlc_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Check permissions
+        if (!$this->check_permission('hhlc_access_module')) {
+            wp_send_json_error('Permission denied');
+            return;
+        }
+
+        // Get parameters
+        $location_id = isset($_POST['location_id']) ? intval($_POST['location_id']) : 0;
+        $room_id = isset($_POST['room_id']) ? sanitize_text_field($_POST['room_id']) : '';
+        $date = isset($_POST['date']) ? sanitize_text_field($_POST['date']) : '';
+        $item_id = isset($_POST['item_id']) ? sanitize_text_field($_POST['item_id']) : '';
+        $count = isset($_POST['count']) ? max(0, intval($_POST['count'])) : 0;
+        $booking_ref = isset($_POST['booking_ref']) ? sanitize_text_field($_POST['booking_ref']) : '';
+
+        // Validate
+        if (!$location_id || !$room_id || !$date || !$item_id) {
+            wp_send_json_error('Invalid parameters');
+            return;
+        }
+
+        // Check if module is enabled for this location
+        $settings = HHLC_Settings::instance();
+        if (!$settings->is_enabled_for_location($location_id)) {
+            wp_send_json_error('Module not enabled for this location');
+            return;
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'hhlc_linen_counts';
+        $current_user_id = get_current_user_id();
+        $current_time = current_time('mysql');
+
+        // Check if there's an existing locked submission
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, is_locked, submitted_by, submitted_at FROM {$table_name}
+            WHERE location_id = %d AND room_id = %s AND linen_item_id = %s AND service_date = %s",
+            $location_id, $room_id, $item_id, $date
+        ));
+
+        try {
+            if ($existing) {
+                // Update existing record
+                // If locked, we're editing a submitted count
+                if ($existing->is_locked) {
+                    // Keep it locked but update the count and edit metadata
+                    $wpdb->update(
+                        $table_name,
+                        array(
+                            'count' => $count,
+                            'last_updated_by' => $current_user_id,
+                            'last_updated_at' => $current_time
+                        ),
+                        array('id' => $existing->id),
+                        array('%d', '%d', '%s'),
+                        array('%d')
+                    );
+                } else {
+                    // Update unlocked draft
+                    $wpdb->update(
+                        $table_name,
+                        array(
+                            'count' => $count,
+                            'last_updated_by' => $current_user_id,
+                            'last_updated_at' => $current_time,
+                            'booking_ref' => $booking_ref
+                        ),
+                        array('id' => $existing->id),
+                        array('%d', '%d', '%s', '%s'),
+                        array('%d')
+                    );
+                }
+            } else {
+                // Insert new unlocked draft record
+                $wpdb->insert(
+                    $table_name,
+                    array(
+                        'location_id' => $location_id,
+                        'room_id' => $room_id,
+                        'linen_item_id' => $item_id,
+                        'count' => $count,
+                        'submitted_by' => $current_user_id,
+                        'submitted_at' => $current_time,
+                        'service_date' => $date,
+                        'booking_ref' => $booking_ref,
+                        'is_locked' => false,
+                        'last_updated_by' => $current_user_id,
+                        'last_updated_at' => $current_time
+                    ),
+                    array('%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s')
+                );
+            }
+
+            if ($wpdb->last_error) {
+                throw new Exception($wpdb->last_error);
+            }
+
+            $user = wp_get_current_user();
+            wp_send_json_success(array(
+                'message' => 'Auto-saved',
+                'saved_by' => $user->display_name,
+                'saved_at' => date('H:i', strtotime($current_time)),
+                'timestamp' => $current_time
+            ));
+
+        } catch (Exception $e) {
+            error_log('HHLC Auto-save Error: ' . $e->getMessage());
+            wp_send_json_error('Failed to auto-save: ' . $e->getMessage());
         }
     }
 

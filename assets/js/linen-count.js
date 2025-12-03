@@ -14,8 +14,22 @@
         date: null,
         isLocked: false,
         originalCounts: {},
-        currentCounts: {}
+        currentCounts: {},
+        autoSaveTimers: {}
     };
+
+    // Debounce utility function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
 
     /**
      * Initialize linen count functionality
@@ -124,14 +138,71 @@
     }
 
     /**
-     * Update linen count in state
+     * Update linen count in state and trigger auto-save
      */
     function updateLinenCount(itemId, count) {
         if (!currentLinenState.currentCounts) {
             currentLinenState.currentCounts = {};
         }
         currentLinenState.currentCounts[itemId] = count;
+
+        // Trigger auto-save if we have location data
+        if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
+            debouncedAutoSave(itemId, count);
+        }
     }
+
+    /**
+     * Auto-save linen count to database
+     */
+    function autoSaveLinenCount(itemId, count) {
+        const $item = $('.hhlc-linen-item[data-item-id="' + itemId + '"]');
+        const $saveStatus = $item.find('.linen-save-status');
+
+        // Show saving indicator
+        if ($saveStatus.length === 0) {
+            $item.find('.linen-count-controls').append('<span class="linen-save-status">Saving...</span>');
+        } else {
+            $saveStatus.text('Saving...').removeClass('saved').addClass('saving');
+        }
+
+        const bookingRef = $('#hhdl-modal').data('booking-ref') || '';
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_autosave_linen_count',
+                nonce: hhlcAjax.nonce,
+                location_id: currentLinenState.location_id,
+                room_id: currentLinenState.room_id,
+                date: currentLinenState.date,
+                item_id: itemId,
+                count: count,
+                booking_ref: bookingRef
+            },
+            success: function(response) {
+                const $status = $('.hhlc-linen-item[data-item-id="' + itemId + '"]').find('.linen-save-status');
+                if (response.success) {
+                    $status.text('Saved').removeClass('saving').addClass('saved');
+                    setTimeout(function() {
+                        $status.fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    }, 2000);
+                } else {
+                    $status.text('Save failed').removeClass('saving').addClass('error');
+                }
+            },
+            error: function() {
+                const $status = $('.hhlc-linen-item[data-item-id="' + itemId + '"]').find('.linen-save-status');
+                $status.text('Save failed').removeClass('saving').addClass('error');
+            }
+        });
+    }
+
+    // Create debounced version of auto-save (wait 800ms after last change)
+    const debouncedAutoSave = debounce(autoSaveLinenCount, 800);
 
     /**
      * Initialize submit handler
@@ -307,18 +378,20 @@
         $(document).on('heartbeat-send', function(event, data) {
             // Only send if we're viewing the daily list
             if ($('#hhdl-room-list').length && currentLinenState.location_id) {
-                data.hhdl_linen_monitor = {
+                data.hhlc_linen_monitor = {
                     location_id: currentLinenState.location_id,
                     last_check: lastLinenCheckTimestamp || new Date().toISOString(),
-                    viewing_date: currentLinenState.date || currentDate
+                    viewing_date: currentLinenState.date || (typeof currentDate !== 'undefined' ? currentDate : ''),
+                    current_room: currentLinenState.room_id || null,
+                    modal_open: $('#hhdl-modal').is(':visible') || false
                 };
             }
         });
 
         // Handle heartbeat response
         $(document).on('heartbeat-tick', function(event, data) {
-            if (data.hhdl_linen_updates) {
-                processLinenUpdates(data.hhdl_linen_updates);
+            if (data.hhlc_linen_updates) {
+                processLinenUpdates(data.hhlc_linen_updates);
             }
         });
     }
@@ -333,41 +406,58 @@
             return;
         }
 
-        updates.updates.forEach(function(update) {
-            // Check if this update is for a room currently being viewed
-            const $modalSection = $('.hhlc-linen-controls[data-room="' + update.room_id + '"]');
+        // Check if modal is open
+        const isModalOpen = $('#hhdl-modal').is(':visible');
+        const currentOpenRoom = currentLinenState.room_id;
 
-            if ($modalSection.length) {
-                // Update the count if it's not being edited
-                if ($modalSection.hasClass('locked')) {
-                    const $item = $modalSection.find('.hhlc-linen-item[data-item-id="' + update.linen_item_id + '"]');
-                    if ($item.length) {
-                        const $input = $item.find('.linen-count-value');
+        updates.updates.forEach(function(update) {
+            // Check if this update is for a room currently being viewed in the modal
+            const $modalSection = $('.hhlc-linen-controls[data-room="' + update.room_id + '"]');
+            const isRelevantRoom = isModalOpen && currentOpenRoom === update.room_id;
+
+            if ($modalSection.length && isRelevantRoom) {
+                // Update the count only if the modal is open for this specific room
+                const $item = $modalSection.find('.hhlc-linen-item[data-item-id="' + update.linen_item_id + '"]');
+                if ($item.length) {
+                    const $input = $item.find('.linen-count-value');
+                    const currentInputValue = parseInt($input.val()) || 0;
+
+                    // Only update if value has changed to avoid overwriting user's current edits
+                    if (currentInputValue !== update.count) {
                         $input.val(update.count);
                         $input.data('original', update.count);
-                        $item.removeClass('changed');
-                    }
 
-                    // Update metadata
-                    let metadataHtml = '<small>Submitted by ' + update.submitted_by_name +
-                                     ' at ' + formatTime(update.submitted_at);
-                    if (update.last_updated_by) {
-                        metadataHtml += '<br>Last edited by ' + update.last_updated_by_name +
-                                      ' at ' + formatTime(update.last_updated_at);
-                    }
-                    metadataHtml += '</small>';
-
-                    if ($modalSection.find('.hhlc-linen-metadata').length) {
-                        $modalSection.find('.hhlc-linen-metadata').html(metadataHtml);
-                    } else {
-                        $modalSection.append('<div class="hhlc-linen-metadata">' + metadataHtml + '</div>');
+                        // If locked, update immediately; if unlocked, just update the original value
+                        if ($modalSection.hasClass('locked')) {
+                            $item.removeClass('changed');
+                        }
                     }
                 }
 
-                // Show notification if another user made the update
-                if (update.submitted_by != hhlcAjax.user_id) {
-                    showToast('Linen count updated by ' + update.submitted_by_name +
-                            ' for room ' + update.room_id, 'info');
+                // Update metadata
+                let metadataHtml = '<small>Submitted by ' + update.submitted_by_name +
+                                 ' at ' + formatTime(update.submitted_at);
+                if (update.last_updated_by) {
+                    metadataHtml += '<br>Last edited by ' + update.last_updated_by_name +
+                                  ' at ' + formatTime(update.last_updated_at);
+                }
+                metadataHtml += '</small>';
+
+                if ($modalSection.find('.hhlc-linen-metadata').length) {
+                    $modalSection.find('.hhlc-linen-metadata').html(metadataHtml);
+                } else {
+                    $modalSection.append('<div class="hhlc-linen-metadata">' + metadataHtml + '</div>');
+                }
+
+                // Show notification ONLY if:
+                // 1. Modal is open for this room
+                // 2. Another user made the update
+                // 3. Update was recent (last_updated_by exists means it was edited, not just submitted)
+                if (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) {
+                    const updaterName = update.last_updated_by_name || update.submitted_by_name;
+                    showToast('Linen count updated by ' + updaterName + ' for room ' + update.room_id, 'info');
+                } else if (!update.last_updated_by && update.submitted_by != hhlcAjax.user_id) {
+                    showToast('Linen count submitted by ' + update.submitted_by_name + ' for room ' + update.room_id, 'info');
                 }
             }
         });
