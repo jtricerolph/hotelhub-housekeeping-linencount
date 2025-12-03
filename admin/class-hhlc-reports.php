@@ -793,7 +793,7 @@ class HHLC_Reports {
             }
 
             $filename = 'linen-totals-' . date('Y-m-d') . '.csv';
-            $csv_data = $this->generate_totals_csv($results, $linen_items);
+            $csv_data = $this->generate_totals_csv($location_id, $start_date, $end_date, $linen_items);
 
         } else {
             // Line Items Export - detailed submissions
@@ -826,7 +826,7 @@ class HHLC_Reports {
             }
 
             $filename = 'linen-line-items-' . date('Y-m-d') . '.csv';
-            $csv_data = $this->generate_line_items_csv($results, $linen_items, $room_names);
+            $csv_data = $this->generate_line_items_csv($results, $linen_items, $room_names, $start_date, $end_date);
         }
 
         wp_send_json_success(array(
@@ -839,10 +839,16 @@ class HHLC_Reports {
     /**
      * Generate line items CSV from results
      */
-    private function generate_line_items_csv($results, $linen_items, $room_names) {
+    private function generate_line_items_csv($results, $linen_items, $room_names, $start_date, $end_date) {
         $output = fopen('php://temp', 'r+');
 
-        // Headers
+        // Export metadata header
+        fputcsv($output, array('Linen Count - Item Line Submits Export'));
+        fputcsv($output, array('Date Range:', $start_date, 'to', $end_date));
+        fputcsv($output, array('Exported:', date('Y-m-d H:i:s')));
+        fputcsv($output, array('')); // Empty row
+
+        // Column headers
         fputcsv($output, array(
             'Date',
             'Room',
@@ -882,35 +888,87 @@ class HHLC_Reports {
     }
 
     /**
-     * Generate totals CSV from aggregated results
+     * Generate totals CSV from aggregated results (pivot style by date)
      */
-    private function generate_totals_csv($results, $linen_items) {
+    private function generate_totals_csv($location_id, $start_date, $end_date, $linen_items) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'hhlc_linen_counts';
+
         $output = fopen('php://temp', 'r+');
 
-        // Headers
-        fputcsv($output, array(
-            'Item Name',
-            'Shortcode',
-            'Total Count',
-            'Rooms',
-            'Average per Room'
-        ));
+        // Export metadata header
+        fputcsv($output, array('Linen Count - Totals Export'));
+        fputcsv($output, array('Date Range:', $start_date, 'to', $end_date));
+        fputcsv($output, array('Exported:', date('Y-m-d H:i:s')));
+        fputcsv($output, array('')); // Empty row
 
-        // Data rows
+        // Generate list of dates in the range
+        $dates = array();
+        $current = strtotime($start_date);
+        $end = strtotime($end_date);
+        while ($current <= $end) {
+            $dates[] = date('Y-m-d', $current);
+            $current = strtotime('+1 day', $current);
+        }
+
+        // Build column headers: Item Name, Shortcode, then each date, then Total
+        $headers = array('Item Name', 'Shortcode');
+        foreach ($dates as $date) {
+            $headers[] = $date;
+        }
+        $headers[] = 'Total';
+        fputcsv($output, $headers);
+
+        // Get data grouped by item and date
+        $query = "SELECT
+                    linen_item_id,
+                    service_date,
+                    SUM(count) as total_count
+                  FROM {$table_name}
+                  WHERE service_date BETWEEN %s AND %s";
+
+        $query_params = array($start_date, $end_date);
+
+        if ($location_id > 0) {
+            $query .= " AND location_id = %d";
+            $query_params[] = $location_id;
+        }
+
+        $query .= " GROUP BY linen_item_id, service_date
+                   ORDER BY linen_item_id, service_date";
+
+        $results = $wpdb->get_results($wpdb->prepare($query, $query_params));
+
+        // Organize data by item
+        $data_by_item = array();
         foreach ($results as $row) {
-            // Get item details
-            $item_details = $this->find_linen_item($linen_items, $row['linen_item_id']);
-            $item_name = $item_details ? $item_details['name'] : $row['linen_item_id'];
-            $shortcode = $item_details ? $item_details['shortcode'] : '';
-            $average = $row['total_count'] / max(1, $row['room_count']);
+            if (!isset($data_by_item[$row->linen_item_id])) {
+                $data_by_item[$row->linen_item_id] = array();
+            }
+            $data_by_item[$row->linen_item_id][$row->service_date] = $row->total_count;
+        }
 
-            fputcsv($output, array(
-                $item_name,
-                $shortcode,
-                $row['total_count'],
-                $row['room_count'],
-                number_format($average, 2)
-            ));
+        // Output rows for each item
+        foreach ($data_by_item as $linen_item_id => $date_counts) {
+            // Get item details
+            $item_details = $this->find_linen_item($linen_items, $linen_item_id);
+            $item_name = $item_details ? $item_details['name'] : $linen_item_id;
+            $shortcode = $item_details ? $item_details['shortcode'] : '';
+
+            $row_data = array($item_name, $shortcode);
+            $total = 0;
+
+            // Add count for each date (0 if no data for that date)
+            foreach ($dates as $date) {
+                $count = isset($date_counts[$date]) ? $date_counts[$date] : 0;
+                $row_data[] = $count;
+                $total += $count;
+            }
+
+            // Add total column
+            $row_data[] = $total;
+
+            fputcsv($output, $row_data);
         }
 
         rewind($output);
