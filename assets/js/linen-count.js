@@ -516,9 +516,10 @@
 
             // Check if this update is for a room currently being viewed in the modal
             const $modalSection = $('.hhlc-linen-controls[data-room="' + update.room_id + '"]');
-            const isRelevantRoom = isModalOpen && currentOpenRoom === update.room_id;
+            // Convert both to strings for comparison to avoid type mismatch
+            const isRelevantRoom = isModalOpen && String(currentOpenRoom) === String(update.room_id);
 
-            console.log('HHLC: Update relevance - modal section found:', $modalSection.length > 0, 'is relevant room:', isRelevantRoom);
+            console.log('HHLC: Update relevance - modal section found:', $modalSection.length > 0, 'is relevant room:', isRelevantRoom, 'comparing:', String(currentOpenRoom), '===', String(update.room_id));
 
             if ($modalSection.length && isRelevantRoom) {
                 console.log('HHLC: Applying update to modal');
