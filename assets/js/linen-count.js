@@ -146,9 +146,32 @@
         }
         currentLinenState.currentCounts[itemId] = count;
 
+        console.log('HHLC: updateLinenCount called', {itemId, count, state: currentLinenState});
+
         // Trigger auto-save if we have location data
         if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
+            console.log('HHLC: Triggering auto-save');
             debouncedAutoSave(itemId, count);
+        } else {
+            console.log('HHLC: Missing state data, cannot auto-save', {
+                has_location: !!currentLinenState.location_id,
+                has_room: !!currentLinenState.room_id,
+                has_date: !!currentLinenState.date
+            });
+
+            // Try to get state from the DOM
+            const $linenSection = $('.hhlc-linen-controls').first();
+            if ($linenSection.length) {
+                currentLinenState.location_id = $linenSection.data('location');
+                currentLinenState.room_id = $linenSection.data('room');
+                currentLinenState.date = $linenSection.data('date');
+                console.log('HHLC: Retrieved state from DOM', currentLinenState);
+
+                if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
+                    console.log('HHLC: Triggering auto-save after DOM state retrieval');
+                    debouncedAutoSave(itemId, count);
+                }
+            }
         }
     }
 
@@ -156,8 +179,12 @@
      * Auto-save linen count to database
      */
     function autoSaveLinenCount(itemId, count) {
+        console.log('HHLC: autoSaveLinenCount called', {itemId, count});
+
         const $item = $('.hhlc-linen-item[data-item-id="' + itemId + '"]');
         const $saveStatus = $item.find('.linen-save-status');
+
+        console.log('HHLC: Found item element:', $item.length > 0);
 
         // Show saving indicator
         if ($saveStatus.length === 0) {
@@ -167,6 +194,14 @@
         }
 
         const bookingRef = $('#hhdl-modal').data('booking-ref') || '';
+
+        console.log('HHLC: Sending auto-save AJAX request', {
+            location_id: currentLinenState.location_id,
+            room_id: currentLinenState.room_id,
+            date: currentLinenState.date,
+            item_id: itemId,
+            count: count
+        });
 
         $.ajax({
             url: hhlcAjax.ajax_url,
@@ -182,8 +217,10 @@
                 booking_ref: bookingRef
             },
             success: function(response) {
+                console.log('HHLC: Auto-save AJAX success', response);
                 const $status = $('.hhlc-linen-item[data-item-id="' + itemId + '"]').find('.linen-save-status');
                 if (response.success) {
+                    console.log('HHLC: Auto-save successful');
                     $status.text('Saved').removeClass('saving').addClass('saved');
                     setTimeout(function() {
                         $status.fadeOut(300, function() {
@@ -191,10 +228,12 @@
                         });
                     }, 2000);
                 } else {
+                    console.error('HHLC: Auto-save failed', response.data);
                     $status.text('Save failed').removeClass('saving').addClass('error');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('HHLC: Auto-save AJAX error', {xhr, status, error});
                 const $status = $('.hhlc-linen-item[data-item-id="' + itemId + '"]').find('.linen-save-status');
                 $status.text('Save failed').removeClass('saving').addClass('error');
             }
@@ -504,13 +543,18 @@
      * Load linen counts when modal opens
      */
     $(document).on('hhdl:modal-opened', function(event, data) {
+        console.log('HHLC: hhdl:modal-opened event received', data);
         const $linenSection = $('.hhlc-linen-controls');
+        console.log('HHLC: Found linen controls:', $linenSection.length);
+
         if ($linenSection.length) {
             // Update state
             currentLinenState.location_id = $linenSection.data('location');
             currentLinenState.room_id = $linenSection.data('room');
             currentLinenState.date = $linenSection.data('date');
             currentLinenState.isLocked = $linenSection.hasClass('locked');
+
+            console.log('HHLC: Modal opened - state initialized', currentLinenState);
 
             // Store original values
             $linenSection.find('.linen-count-value').each(function() {
@@ -521,6 +565,7 @@
                 currentLinenState.originalCounts[itemId] = value;
                 currentLinenState.currentCounts[itemId] = value;
             });
+            console.log('HHLC: Stored', Object.keys(currentLinenState.originalCounts).length, 'original count values');
         }
     });
 
