@@ -490,6 +490,27 @@
                 console.log('HHLC: No linen updates in heartbeat response');
             }
         });
+
+        // Trigger immediate heartbeat check when page becomes visible (wake from standby, tab focus)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && currentLinenState.location_id && currentLinenState.date) {
+                console.log('HHLC: Page became visible, triggering immediate heartbeat check');
+                // Trigger an immediate heartbeat
+                if (typeof wp !== 'undefined' && wp.heartbeat) {
+                    wp.heartbeat.connectNow();
+                }
+            }
+        });
+
+        // Also trigger on window focus as a fallback
+        $(window).on('focus', function() {
+            if (currentLinenState.location_id && currentLinenState.date) {
+                console.log('HHLC: Window gained focus, triggering immediate heartbeat check');
+                if (typeof wp !== 'undefined' && wp.heartbeat) {
+                    wp.heartbeat.connectNow();
+                }
+            }
+        });
     }
 
     let lastLinenCheckTimestamp = new Date().toISOString();
