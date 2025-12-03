@@ -191,16 +191,20 @@ class HHLC_Reports {
             <!-- Export Tab -->
             <div id="export" class="tab-content">
                 <h3>Export Linen Count Data</h3>
-                <div class="export-options">
-                    <label>
-                        <input type="radio" name="export-format" value="csv" checked> CSV Format
+
+                <div class="export-type-section" style="margin-bottom: 20px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 10px;">Export Type:</label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="radio" name="export-type" value="line-items" checked> Item Line Submits (Detailed)
+                        <span style="color: #666; font-size: 12px; margin-left: 10px;">- Each submission line with room, item, count</span>
                     </label>
-                    <label>
-                        <input type="radio" name="export-format" value="excel"> Excel Format
+                    <label style="display: block;">
+                        <input type="radio" name="export-type" value="totals"> Totals Export (Summary)
+                        <span style="color: #666; font-size: 12px; margin-left: 10px;">- Aggregated totals by item type</span>
                     </label>
                 </div>
 
-                <div class="export-date-range">
+                <div class="export-date-range" style="margin-bottom: 20px;">
                     <label>Date Range:</label>
                     <input type="date" id="export-start-date" value="<?php echo date('Y-m-01'); ?>" />
                     <span>to</span>
@@ -208,7 +212,7 @@ class HHLC_Reports {
                 </div>
 
                 <button type="button" class="button button-primary" id="export-data">
-                    Download Report
+                    Download CSV Report
                 </button>
             </div>
         </div>
@@ -739,86 +743,173 @@ class HHLC_Reports {
         $location_id = isset($_POST['location_id']) ? intval($_POST['location_id']) : 0;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
         $end_date = isset($_POST['end_date']) ? sanitize_text_field($_POST['end_date']) : '';
-        $format = isset($_POST['format']) ? sanitize_text_field($_POST['format']) : 'csv';
+        $export_type = isset($_POST['export_type']) ? sanitize_text_field($_POST['export_type']) : 'line-items';
 
         global $wpdb;
         $table_name = $wpdb->prefix . 'hhlc_linen_counts';
 
-        // Build query
-        $query = "SELECT
-                    lc.*,
-                    u1.display_name as submitted_by_name,
-                    u2.display_name as updated_by_name
-                  FROM {$table_name} lc
-                  LEFT JOIN {$wpdb->users} u1 ON lc.submitted_by = u1.ID
-                  LEFT JOIN {$wpdb->users} u2 ON lc.last_updated_by = u2.ID
-                  WHERE 1=1";
-
-        $query_params = array();
-
-        if (!empty($start_date) && !empty($end_date)) {
-            $query .= " AND lc.service_date BETWEEN %s AND %s";
-            $query_params[] = $start_date;
-            $query_params[] = $end_date;
-        }
-
+        // Get linen items configuration for item names
+        $linen_items = array();
         if ($location_id > 0) {
-            $query .= " AND lc.location_id = %d";
-            $query_params[] = $location_id;
+            $settings = get_option('hhlc_location_settings', array());
+            $location_settings = isset($settings[$location_id]) ? $settings[$location_id] : array();
+            $linen_items = isset($location_settings['linen_items']) ? $location_settings['linen_items'] : array();
         }
 
-        $query .= " ORDER BY lc.service_date, lc.room_id, lc.linen_item_id";
+        // Get room names
+        $room_names = $this->get_room_names($location_id);
 
-        if (!empty($query_params)) {
-            $results = $wpdb->get_results($wpdb->prepare($query, $query_params), ARRAY_A);
+        $csv_data = '';
+        $filename = '';
+
+        if ($export_type === 'totals') {
+            // Totals Export - aggregated by item type
+            $query = "SELECT
+                        linen_item_id,
+                        SUM(count) as total_count,
+                        COUNT(DISTINCT room_id) as room_count
+                      FROM {$table_name}
+                      WHERE 1=1";
+
+            $query_params = array();
+
+            if (!empty($start_date) && !empty($end_date)) {
+                $query .= " AND service_date BETWEEN %s AND %s";
+                $query_params[] = $start_date;
+                $query_params[] = $end_date;
+            }
+
+            if ($location_id > 0) {
+                $query .= " AND location_id = %d";
+                $query_params[] = $location_id;
+            }
+
+            $query .= " GROUP BY linen_item_id ORDER BY total_count DESC";
+
+            if (!empty($query_params)) {
+                $results = $wpdb->get_results($wpdb->prepare($query, $query_params), ARRAY_A);
+            } else {
+                $results = $wpdb->get_results($query, ARRAY_A);
+            }
+
+            $filename = 'linen-totals-' . date('Y-m-d') . '.csv';
+            $csv_data = $this->generate_totals_csv($results, $linen_items);
+
         } else {
-            $results = $wpdb->get_results($query, ARRAY_A);
+            // Line Items Export - detailed submissions
+            $query = "SELECT
+                        lc.*,
+                        u1.display_name as submitted_by_name
+                      FROM {$table_name} lc
+                      LEFT JOIN {$wpdb->users} u1 ON lc.submitted_by = u1.ID
+                      WHERE 1=1";
+
+            $query_params = array();
+
+            if (!empty($start_date) && !empty($end_date)) {
+                $query .= " AND lc.service_date BETWEEN %s AND %s";
+                $query_params[] = $start_date;
+                $query_params[] = $end_date;
+            }
+
+            if ($location_id > 0) {
+                $query .= " AND lc.location_id = %d";
+                $query_params[] = $location_id;
+            }
+
+            $query .= " ORDER BY lc.service_date, lc.room_id, lc.linen_item_id";
+
+            if (!empty($query_params)) {
+                $results = $wpdb->get_results($wpdb->prepare($query, $query_params), ARRAY_A);
+            } else {
+                $results = $wpdb->get_results($query, ARRAY_A);
+            }
+
+            $filename = 'linen-line-items-' . date('Y-m-d') . '.csv';
+            $csv_data = $this->generate_line_items_csv($results, $linen_items, $room_names);
         }
 
-        // Generate CSV
-        if ($format == 'csv') {
-            $filename = 'linen-counts-' . date('Y-m-d') . '.csv';
-            $csv_data = $this->generate_csv($results);
-
-            wp_send_json_success(array(
-                'filename' => $filename,
-                'data' => base64_encode($csv_data),
-                'mime' => 'text/csv'
-            ));
-        }
+        wp_send_json_success(array(
+            'filename' => $filename,
+            'data' => base64_encode($csv_data),
+            'mime' => 'text/csv'
+        ));
     }
 
     /**
-     * Generate CSV from results
+     * Generate line items CSV from results
      */
-    private function generate_csv($results) {
+    private function generate_line_items_csv($results, $linen_items, $room_names) {
         $output = fopen('php://temp', 'r+');
 
         // Headers
         fputcsv($output, array(
             'Date',
             'Room',
-            'Item ID',
+            'Shortcode',
+            'Item Name',
             'Count',
             'Submitted By',
-            'Submitted At',
-            'Updated By',
-            'Updated At',
-            'Booking Ref'
+            'Submitted At'
         ));
 
         // Data rows
         foreach ($results as $row) {
+            // Get room name
+            $room_name = isset($room_names[$row['room_id']]) ? $room_names[$row['room_id']] : $row['room_id'];
+
+            // Get item details
+            $item_details = $this->find_linen_item($linen_items, $row['linen_item_id']);
+            $shortcode = $item_details ? $item_details['shortcode'] : $row['linen_item_id'];
+            $item_name = $item_details ? $item_details['name'] : '';
+
             fputcsv($output, array(
                 $row['service_date'],
-                $row['room_id'],
-                $row['linen_item_id'],
+                $room_name,
+                $shortcode,
+                $item_name,
                 $row['count'],
                 $row['submitted_by_name'],
-                $row['submitted_at'],
-                $row['updated_by_name'],
-                $row['last_updated_at'],
-                $row['booking_ref']
+                $row['submitted_at']
+            ));
+        }
+
+        rewind($output);
+        $csv_data = stream_get_contents($output);
+        fclose($output);
+
+        return $csv_data;
+    }
+
+    /**
+     * Generate totals CSV from aggregated results
+     */
+    private function generate_totals_csv($results, $linen_items) {
+        $output = fopen('php://temp', 'r+');
+
+        // Headers
+        fputcsv($output, array(
+            'Item Name',
+            'Shortcode',
+            'Total Count',
+            'Rooms',
+            'Average per Room'
+        ));
+
+        // Data rows
+        foreach ($results as $row) {
+            // Get item details
+            $item_details = $this->find_linen_item($linen_items, $row['linen_item_id']);
+            $item_name = $item_details ? $item_details['name'] : $row['linen_item_id'];
+            $shortcode = $item_details ? $item_details['shortcode'] : '';
+            $average = $row['total_count'] / max(1, $row['room_count']);
+
+            fputcsv($output, array(
+                $item_name,
+                $shortcode,
+                $row['total_count'],
+                $row['room_count'],
+                number_format($average, 2)
             ));
         }
 
@@ -1097,14 +1188,14 @@ class HHLC_Reports {
             $('#export-data').on('click', function(e) {
                 e.preventDefault();
                 console.log('HHLC Reports: Export data clicked');
-                var format = $('input[name=\"export-format\"]:checked').val();
+                var exportType = $('input[name=\"export-type\"]:checked').val();
                 var startDate = $('#export-start-date').val();
                 var endDate = $('#export-end-date').val();
                 var locationId = $('#location-selector').val() ||
                                 $('input[name=\"location_id\"]').val() ||
                                 $('#linen-calendar').data('initial-location') || 0;
 
-                console.log('HHLC Reports: Export params - location:', locationId, 'dates:', startDate, '-', endDate, 'format:', format);
+                console.log('HHLC Reports: Export params - location:', locationId, 'dates:', startDate, '-', endDate, 'type:', exportType);
 
                 if (!startDate || !endDate) {
                     alert('Please select both start and end dates for export.');
@@ -1122,7 +1213,7 @@ class HHLC_Reports {
                         location_id: locationId,
                         start_date: startDate,
                         end_date: endDate,
-                        format: format
+                        export_type: exportType
                     },
                     success: function(response) {
                         console.log('HHLC Reports: Export response', response);
@@ -1141,12 +1232,12 @@ class HHLC_Reports {
                         } else {
                             alert('Export failed: ' + (response.data || 'Unknown error'));
                         }
-                        $('#export-data').prop('disabled', false).text('Download Report');
+                        $('#export-data').prop('disabled', false).text('Download CSV Report');
                     },
                     error: function(xhr, status, error) {
                         console.error('HHLC Reports: Export error', error);
                         alert('Export failed: ' + error);
-                        $('#export-data').prop('disabled', false).text('Download Report');
+                        $('#export-data').prop('disabled', false).text('Download CSV Report');
                     }
                 });
             });
