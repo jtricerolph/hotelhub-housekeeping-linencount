@@ -119,6 +119,7 @@ class HHLC_Reports {
             <div class="hhdl-report-filters">
                 <form method="get" action="" id="linen-report-filters">
                     <input type="hidden" name="page" value="<?php echo esc_attr($_GET['page']); ?>" />
+                    <input type="hidden" name="report" value="<?php echo esc_attr($_GET['report']); ?>" />
 
                     <!-- Location Selector -->
                     <?php if (!empty($locations)) : ?>
@@ -629,10 +630,18 @@ class HHLC_Reports {
      * Enqueue report assets
      */
     public function enqueue_report_assets($hook) {
-        // Only load on reports page
-        if (strpos($hook, 'linen-counts') === false) {
+        // Check if we're on a reports page
+        // Hotel Hub reports pages have hook like: toplevel_page_hha-reports, hha-app_page_hha-reports
+        if (strpos($hook, 'hha-reports') === false && strpos($hook, 'linen-counts') === false) {
             return;
         }
+
+        // Also check if our report is being viewed
+        if (!isset($_GET['report']) || $_GET['report'] !== 'hhlc-linen-counts') {
+            return;
+        }
+
+        error_log('HHLC Reports: Enqueueing assets for hook: ' . $hook);
 
         // Report styles
         wp_add_inline_style('wp-admin', $this->get_report_inline_styles());
@@ -690,6 +699,11 @@ class HHLC_Reports {
     private function get_report_inline_script() {
         return "
         jQuery(document).ready(function($) {
+            console.log('HHLC Reports: Script loaded and initialized');
+            console.log('HHLC Reports: jQuery version:', $.fn.jquery);
+            console.log('HHLC Reports: Found .nav-tab elements:', $('.nav-tab').length);
+            console.log('HHLC Reports: Found #linen-calendar:', $('#linen-calendar').length);
+
             // Tab switching
             $('.nav-tab').on('click', function(e) {
                 e.preventDefault();
