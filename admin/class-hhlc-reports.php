@@ -222,6 +222,16 @@ class HHLC_Reports {
                 </div>
             </div>
         </div>
+
+        <!-- Inline Styles -->
+        <style type="text/css">
+            <?php echo $this->get_report_inline_styles(); ?>
+        </style>
+
+        <!-- Inline JavaScript -->
+        <script type="text/javascript">
+            <?php echo $this->get_report_inline_script(); ?>
+        </script>
         <?php
     }
 
