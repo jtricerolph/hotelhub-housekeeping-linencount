@@ -3,7 +3,7 @@
  * Plugin Name: Hotel Hub Module - Housekeeping - Spoilt Linen Count
  * Plugin URI: https://github.com/jtricerolph/hotelhub-housekeeping-linencount
  * Description: Soiled linen count tracking module for housekeeping with real-time sync and reporting
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: JTR
  * License: GPL v2 or later
  * Text Domain: hhlc
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('HHLC_VERSION', '1.0.0');
+define('HHLC_VERSION', '1.0.1');
 define('HHLC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('HHLC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('HHLC_PLUGIN_BASENAME', plugin_basename(__FILE__));
