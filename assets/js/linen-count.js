@@ -460,22 +460,34 @@
     function initLinenHeartbeat() {
         // Hook into WordPress heartbeat
         $(document).on('heartbeat-send', function(event, data) {
-            // Only send if we're viewing the daily list
-            if ($('#hhdl-room-list').length && currentLinenState.location_id) {
-                data.hhlc_linen_monitor = {
+            // Send heartbeat if we have state (either room list is visible OR modal is open)
+            if (currentLinenState.location_id && currentLinenState.date) {
+                const heartbeatData = {
                     location_id: currentLinenState.location_id,
                     last_check: lastLinenCheckTimestamp || new Date().toISOString(),
-                    viewing_date: currentLinenState.date || (typeof currentDate !== 'undefined' ? currentDate : ''),
+                    viewing_date: currentLinenState.date,
                     current_room: currentLinenState.room_id || null,
                     modal_open: $('#hhdl-modal').is(':visible') || false
                 };
+
+                console.log('HHLC: Sending heartbeat data', heartbeatData);
+                data.hhlc_linen_monitor = heartbeatData;
+            } else {
+                console.log('HHLC: Not sending heartbeat - missing state', {
+                    has_location: !!currentLinenState.location_id,
+                    has_date: !!currentLinenState.date
+                });
             }
         });
 
         // Handle heartbeat response
         $(document).on('heartbeat-tick', function(event, data) {
+            console.log('HHLC: Heartbeat tick received', data);
             if (data.hhlc_linen_updates) {
+                console.log('HHLC: Processing linen updates', data.hhlc_linen_updates);
                 processLinenUpdates(data.hhlc_linen_updates);
+            } else {
+                console.log('HHLC: No linen updates in heartbeat response');
             }
         });
     }
@@ -487,35 +499,61 @@
      */
     function processLinenUpdates(updates) {
         if (!updates.updates || !updates.updates.length) {
+            console.log('HHLC: No updates to process');
             return;
         }
+
+        console.log('HHLC: Processing', updates.updates.length, 'linen count updates');
 
         // Check if modal is open
         const isModalOpen = $('#hhdl-modal').is(':visible');
         const currentOpenRoom = currentLinenState.room_id;
 
+        console.log('HHLC: Modal state - open:', isModalOpen, 'current room:', currentOpenRoom);
+
         updates.updates.forEach(function(update) {
+            console.log('HHLC: Processing update for room', update.room_id, 'item', update.linen_item_id, 'count', update.count);
+
             // Check if this update is for a room currently being viewed in the modal
             const $modalSection = $('.hhlc-linen-controls[data-room="' + update.room_id + '"]');
             const isRelevantRoom = isModalOpen && currentOpenRoom === update.room_id;
 
+            console.log('HHLC: Update relevance - modal section found:', $modalSection.length > 0, 'is relevant room:', isRelevantRoom);
+
             if ($modalSection.length && isRelevantRoom) {
+                console.log('HHLC: Applying update to modal');
                 // Update the count only if the modal is open for this specific room
                 const $item = $modalSection.find('.hhlc-linen-item[data-item-id="' + update.linen_item_id + '"]');
                 if ($item.length) {
                     const $input = $item.find('.linen-count-value');
                     const currentInputValue = parseInt($input.val()) || 0;
 
+                    console.log('HHLC: Current value:', currentInputValue, 'New value:', update.count);
+
                     // Only update if value has changed to avoid overwriting user's current edits
                     if (currentInputValue !== update.count) {
+                        console.log('HHLC: Updating input value from', currentInputValue, 'to', update.count);
                         $input.val(update.count);
                         $input.data('original', update.count);
+
+                        // Update state to keep badge in sync
+                        currentLinenState.currentCounts[update.linen_item_id] = update.count;
+                        currentLinenState.originalCounts[update.linen_item_id] = update.count;
+
+                        // Update the room list badge
+                        updateRoomListBadge();
 
                         // If locked, update immediately; if unlocked, just update the original value
                         if ($modalSection.hasClass('locked')) {
                             $item.removeClass('changed');
                         }
+
+                        console.log('HHLC: Value updated successfully');
+                    } else {
+                        console.log('HHLC: Value unchanged, skipping update');
                     }
+                } else {
+                    console.log('HHLC: Item element not found for', update.linen_item_id);
                 }
 
                 // Update metadata
@@ -543,6 +581,8 @@
                 } else if (!update.last_updated_by && update.submitted_by != hhlcAjax.user_id) {
                     showToast('Linen count submitted by ' + update.submitted_by_name + ' for room ' + update.room_id, 'info');
                 }
+            } else {
+                console.log('HHLC: Skipping update - not for current room or modal not visible');
             }
         });
 
