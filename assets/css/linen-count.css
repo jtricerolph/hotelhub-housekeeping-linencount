@@ -497,3 +497,20 @@
     white-space: nowrap;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
+/* Heartbeat update emphasis */
+.hhlc-linen-item.heartbeat-updated {
+    background-color: #fff3cd !important;
+    border-color: #ffc107 !important;
+    animation: heartbeat-pulse 1.5s ease-in-out;
+    transition: background-color 3s ease-out, border-color 3s ease-out;
+}
+
+@keyframes heartbeat-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}

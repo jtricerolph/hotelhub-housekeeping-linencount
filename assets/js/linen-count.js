@@ -544,12 +544,32 @@
                         // Update the room list badge
                         updateRoomListBadge();
 
+                        // Add visual emphasis for heartbeat update
+                        $item.addClass('heartbeat-updated');
+
+                        // Get item shortcode for readable notification
+                        const itemShortcode = $item.find('.linen-shortcode').text() || update.linen_item_id;
+
+                        // Show toast notification with who updated and what changed
+                        const updaterName = update.last_updated_by_name || update.submitted_by_name;
+                        if (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) {
+                            showToast(
+                                itemShortcode + ' updated by ' + updaterName + ' (was ' + currentInputValue + ', now ' + update.count + ')',
+                                'info'
+                            );
+                        }
+
+                        // Remove emphasis after 3 seconds
+                        setTimeout(function() {
+                            $item.removeClass('heartbeat-updated');
+                        }, 3000);
+
                         // If locked, update immediately; if unlocked, just update the original value
                         if ($modalSection.hasClass('locked')) {
                             $item.removeClass('changed');
                         }
 
-                        console.log('HHLC: Value updated successfully');
+                        console.log('HHLC: Value updated successfully with visual emphasis');
                     } else {
                         console.log('HHLC: Value unchanged, skipping update');
                     }
