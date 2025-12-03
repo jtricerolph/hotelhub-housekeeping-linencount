@@ -553,13 +553,18 @@
                         // Show toast notification with who updated and what changed
                         const updaterName = update.last_updated_by_name || update.submitted_by_name;
                         // Check if update is from another user (either new submission or edit)
+                        console.log('HHLC: Checking notification - last_updated_by:', update.last_updated_by, 'submitted_by:', update.submitted_by, 'current user:', hhlcAjax.user_id, 'types:', typeof update.last_updated_by, typeof update.submitted_by, typeof hhlcAjax.user_id);
                         const isFromAnotherUser = (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) ||
                                                   (!update.last_updated_by && update.submitted_by != hhlcAjax.user_id);
+                        console.log('HHLC: isFromAnotherUser:', isFromAnotherUser);
                         if (isFromAnotherUser) {
+                            console.log('HHLC: Showing toast notification');
                             showToast(
                                 itemShortcode + ' updated by ' + updaterName + ' (was ' + currentInputValue + ', now ' + update.count + ')',
                                 'info'
                             );
+                        } else {
+                            console.log('HHLC: Skipping notification - update is from current user');
                         }
 
                         // Remove emphasis after 3 seconds
