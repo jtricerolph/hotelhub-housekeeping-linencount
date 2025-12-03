@@ -552,7 +552,10 @@
 
                         // Show toast notification with who updated and what changed
                         const updaterName = update.last_updated_by_name || update.submitted_by_name;
-                        if (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) {
+                        // Check if update is from another user (either new submission or edit)
+                        const isFromAnotherUser = (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) ||
+                                                  (!update.last_updated_by && update.submitted_by != hhlcAjax.user_id);
+                        if (isFromAnotherUser) {
                             showToast(
                                 itemShortcode + ' updated by ' + updaterName + ' (was ' + currentInputValue + ', now ' + update.count + ')',
                                 'info'
