@@ -79,13 +79,22 @@ class HHLC_Reports {
      * Render the report page
      */
     public function render_report_page() {
-        // Get locations
-        $locations = array();
+        // Get all locations
+        $all_locations = array();
         if (function_exists('hha')) {
-            $locations = hha()->hotels->get_active();
+            $all_locations = hha()->hotels->get_active();
         }
 
-        // Default to first location if none selected
+        // Filter to only show locations with linen count enabled
+        $locations = array();
+        $settings_instance = HHLC_Settings::instance();
+        foreach ($all_locations as $location) {
+            if ($settings_instance->is_enabled_for_location($location->id)) {
+                $locations[] = $location;
+            }
+        }
+
+        // Default to first enabled location if none selected
         $current_location = isset($_GET['location_id']) ? intval($_GET['location_id']) : 0;
         if ($current_location === 0 && !empty($locations)) {
             $current_location = $locations[0]->id;
@@ -95,6 +104,17 @@ class HHLC_Reports {
         ?>
         <div class="wrap hhdl-linen-report-wrap">
             <h1>Linen Count Report</h1>
+
+            <?php if (empty($locations)) : ?>
+                <div class="notice notice-warning">
+                    <p>
+                        <strong>No locations available for linen count reporting.</strong><br>
+                        Please enable the Linen Count module for at least one location in
+                        <a href="<?php echo admin_url('admin.php?page=hhlc-settings'); ?>">Linen Count Settings</a>.
+                    </p>
+                </div>
+                <?php return; ?>
+            <?php endif; ?>
 
             <div class="hhdl-report-filters">
                 <form method="get" action="" id="linen-report-filters">
@@ -627,9 +647,9 @@ class HHLC_Reports {
     private function get_report_inline_styles() {
         return '
         .hhdl-linen-report-wrap { padding: 20px; }
-        .hhdl-report-filters { margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4; }
-        .hhdl-report-filters form { display: flex; gap: 15px; align-items: center; }
-        .tab-content { display: none; padding: 20px; background: #fff; border: 1px solid #ccd0d4; }
+        .hhdl-report-filters { margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; }
+        .hhdl-report-filters form { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .tab-content { display: none; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; margin-top: 20px; }
         .tab-content.active { display: block; }
 
         /* Calendar styles */
@@ -674,32 +694,53 @@ class HHLC_Reports {
             $('.nav-tab').on('click', function(e) {
                 e.preventDefault();
                 var tab = $(this).data('tab');
+
+                console.log('HHLC Reports: Tab clicked:', tab);
+
                 $('.nav-tab').removeClass('nav-tab-active');
                 $(this).addClass('nav-tab-active');
-                $('.tab-content').removeClass('active');
-                $('#' + tab + '-view, #' + tab).addClass('active');
+                $('.tab-content').removeClass('active').hide();
+
+                // Map tab names to content IDs
+                var contentMap = {
+                    'calendar': '#calendar-view',
+                    'summary': '#summary-report',
+                    'export': '#export'
+                };
+
+                var contentId = contentMap[tab] || '#' + tab;
+                console.log('HHLC Reports: Showing content:', contentId);
+                $(contentId).addClass('active').show();
             });
 
             // Load calendar on page load
             loadCalendar();
 
             // Calendar navigation
-            $('.prev-month').on('click', function() {
+            $('.prev-month').on('click', function(e) {
+                e.preventDefault();
+                console.log('HHLC Reports: Previous month clicked');
                 var currentMonth = $('#linen-calendar').data('month');
+                console.log('HHLC Reports: Current month:', currentMonth);
                 var date = new Date(currentMonth + '-01');
                 date.setMonth(date.getMonth() - 1);
                 var newMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                console.log('HHLC Reports: New month:', newMonth);
                 $('#month-selector').val(newMonth);
                 $('#linen-calendar').data('month', newMonth);
                 $('.calendar-month-year').text(formatMonthYear(newMonth));
                 loadCalendar();
             });
 
-            $('.next-month').on('click', function() {
+            $('.next-month').on('click', function(e) {
+                e.preventDefault();
+                console.log('HHLC Reports: Next month clicked');
                 var currentMonth = $('#linen-calendar').data('month');
+                console.log('HHLC Reports: Current month:', currentMonth);
                 var date = new Date(currentMonth + '-01');
                 date.setMonth(date.getMonth() + 1);
                 var newMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                console.log('HHLC Reports: New month:', newMonth);
                 $('#month-selector').val(newMonth);
                 $('#linen-calendar').data('month', newMonth);
                 $('.calendar-month-year').text(formatMonthYear(newMonth));
@@ -781,28 +822,44 @@ class HHLC_Reports {
             });
 
             // Generate summary report
-            $('#generate-summary').on('click', function() {
+            $('#generate-summary').on('click', function(e) {
+                e.preventDefault();
+                console.log('HHLC Reports: Generate summary clicked');
                 var startDate = $('#summary-start-date').val();
                 var endDate = $('#summary-end-date').val();
                 var locationId = $('#location-selector').val() ||
                                 $('input[name=\"location_id\"]').val() ||
                                 $('#linen-calendar').data('initial-location') || 0;
 
+                console.log('HHLC Reports: Summary params - location:', locationId, 'dates:', startDate, '-', endDate);
+
                 // Load summary data
                 $('#summary-results').html('<p>Loading summary report...</p>');
 
                 // This would call an AJAX handler to generate the summary
-                // Implementation depends on specific requirements
+                // TODO: Implement summary report AJAX handler
+                $('#summary-results').html('<p><strong>Summary report functionality coming soon.</strong><br>This will show aggregated statistics for the date range selected.</p>');
             });
 
             // Export data
-            $('#export-data').on('click', function() {
+            $('#export-data').on('click', function(e) {
+                e.preventDefault();
+                console.log('HHLC Reports: Export data clicked');
                 var format = $('input[name=\"export-format\"]:checked').val();
                 var startDate = $('#export-start-date').val();
                 var endDate = $('#export-end-date').val();
                 var locationId = $('#location-selector').val() ||
                                 $('input[name=\"location_id\"]').val() ||
                                 $('#linen-calendar').data('initial-location') || 0;
+
+                console.log('HHLC Reports: Export params - location:', locationId, 'dates:', startDate, '-', endDate, 'format:', format);
+
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates for export.');
+                    return;
+                }
+
+                $(this).prop('disabled', true).text('Exporting...');
 
                 $.ajax({
                     url: ajaxurl,
@@ -816,6 +873,7 @@ class HHLC_Reports {
                         format: format
                     },
                     success: function(response) {
+                        console.log('HHLC Reports: Export response', response);
                         if (response.success) {
                             // Create download link
                             var blob = new Blob([atob(response.data.data)], {type: response.data.mime});
@@ -827,7 +885,16 @@ class HHLC_Reports {
                             a.click();
                             window.URL.revokeObjectURL(url);
                             document.body.removeChild(a);
+                            alert('Export completed successfully!');
+                        } else {
+                            alert('Export failed: ' + (response.data || 'Unknown error'));
                         }
+                        $('#export-data').prop('disabled', false).text('Download Report');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('HHLC Reports: Export error', error);
+                        alert('Export failed: ' + error);
+                        $('#export-data').prop('disabled', false).text('Download Report');
                     }
                 });
             });
