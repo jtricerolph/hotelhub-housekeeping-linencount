@@ -146,32 +146,16 @@
         }
         currentLinenState.currentCounts[itemId] = count;
 
-        console.log('HHLC: updateLinenCount called', {itemId, count, state: currentLinenState});
-
         // Trigger auto-save if we have location data
         if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
-            console.log('HHLC: Triggering auto-save');
+            console.log('HHLC: Triggering auto-save for item', itemId, 'with count', count);
             debouncedAutoSave(itemId, count);
         } else {
-            console.log('HHLC: Missing state data, cannot auto-save', {
+            console.warn('HHLC: Cannot auto-save - state not initialized', {
                 has_location: !!currentLinenState.location_id,
                 has_room: !!currentLinenState.room_id,
                 has_date: !!currentLinenState.date
             });
-
-            // Try to get state from the DOM
-            const $linenSection = $('.hhlc-linen-controls').first();
-            if ($linenSection.length) {
-                currentLinenState.location_id = $linenSection.data('location');
-                currentLinenState.room_id = $linenSection.data('room');
-                currentLinenState.date = $linenSection.data('date');
-                console.log('HHLC: Retrieved state from DOM', currentLinenState);
-
-                if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
-                    console.log('HHLC: Triggering auto-save after DOM state retrieval');
-                    debouncedAutoSave(itemId, count);
-                }
-            }
         }
     }
 
@@ -540,32 +524,98 @@
     }
 
     /**
-     * Load linen counts when modal opens
+     * Initialize state from linen controls element
+     */
+    function initializeLinenState($linenSection) {
+        if (!$linenSection || !$linenSection.length) {
+            console.log('HHLC: No linen section provided to initializeLinenState');
+            return false;
+        }
+
+        // Check if we already initialized this section
+        if ($linenSection.data('hhlc-initialized')) {
+            console.log('HHLC: Linen section already initialized, skipping');
+            return false;
+        }
+
+        // Update state
+        currentLinenState.location_id = $linenSection.data('location');
+        currentLinenState.room_id = $linenSection.data('room');
+        currentLinenState.date = $linenSection.data('date');
+        currentLinenState.isLocked = $linenSection.hasClass('locked');
+
+        console.log('HHLC: State initialized from linen controls', currentLinenState);
+
+        // Store original values
+        $linenSection.find('.linen-count-value').each(function() {
+            const $item = $(this).closest('.hhlc-linen-item');
+            const itemId = $item.data('item-id');
+            const value = parseInt($(this).val()) || 0;
+            $(this).data('original', value);
+            currentLinenState.originalCounts[itemId] = value;
+            currentLinenState.currentCounts[itemId] = value;
+        });
+        console.log('HHLC: Stored', Object.keys(currentLinenState.originalCounts).length, 'original count values');
+
+        // Mark as initialized
+        $linenSection.data('hhlc-initialized', true);
+        return true;
+    }
+
+    /**
+     * Watch for linen controls appearing in DOM
+     */
+    function watchForLinenControls() {
+        // Check if linen controls already exist
+        const $existing = $('.hhlc-linen-controls:not([data-hhlc-initialized])');
+        if ($existing.length) {
+            console.log('HHLC: Found existing linen controls on page load');
+            initializeLinenState($existing.first());
+        }
+
+        // Watch for new linen controls being added to DOM (e.g., when modal opens)
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) { // Element node
+                            // Check if the added node is or contains linen controls
+                            let $linenControls = null;
+                            if ($(node).hasClass('hhlc-linen-controls')) {
+                                $linenControls = $(node);
+                            } else {
+                                $linenControls = $(node).find('.hhlc-linen-controls');
+                            }
+
+                            if ($linenControls && $linenControls.length && !$linenControls.data('hhlc-initialized')) {
+                                console.log('HHLC: Detected new linen controls added to DOM');
+                                initializeLinenState($linenControls.first());
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Start observing the document body for changes
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        console.log('HHLC: MutationObserver started, watching for linen controls');
+    }
+
+    /**
+     * Load linen counts when modal opens (fallback for custom event if it exists)
      */
     $(document).on('hhdl:modal-opened', function(event, data) {
         console.log('HHLC: hhdl:modal-opened event received', data);
-        const $linenSection = $('.hhlc-linen-controls');
-        console.log('HHLC: Found linen controls:', $linenSection.length);
+        const $linenSection = $('.hhlc-linen-controls:not([data-hhlc-initialized])');
+        console.log('HHLC: Found uninitialized linen controls:', $linenSection.length);
 
         if ($linenSection.length) {
-            // Update state
-            currentLinenState.location_id = $linenSection.data('location');
-            currentLinenState.room_id = $linenSection.data('room');
-            currentLinenState.date = $linenSection.data('date');
-            currentLinenState.isLocked = $linenSection.hasClass('locked');
-
-            console.log('HHLC: Modal opened - state initialized', currentLinenState);
-
-            // Store original values
-            $linenSection.find('.linen-count-value').each(function() {
-                const $item = $(this).closest('.hhlc-linen-item');
-                const itemId = $item.data('item-id');
-                const value = parseInt($(this).val()) || 0;
-                $(this).data('original', value);
-                currentLinenState.originalCounts[itemId] = value;
-                currentLinenState.currentCounts[itemId] = value;
-            });
-            console.log('HHLC: Stored', Object.keys(currentLinenState.originalCounts).length, 'original count values');
+            initializeLinenState($linenSection.first());
         }
     });
 
@@ -594,6 +644,9 @@
             // Initialize anyway for modal content
             initLinenCount();
         }
+
+        // Start watching for linen controls appearing in DOM
+        watchForLinenControls();
     });
 
     // Export for external use
