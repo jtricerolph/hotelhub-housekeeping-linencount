@@ -146,6 +146,9 @@
         }
         currentLinenState.currentCounts[itemId] = count;
 
+        // Update the room list badge
+        updateRoomListBadge();
+
         // Trigger auto-save if we have location data
         if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
             console.log('HHLC: Triggering auto-save for item', itemId, 'with count', count);
@@ -156,6 +159,52 @@
                 has_room: !!currentLinenState.room_id,
                 has_date: !!currentLinenState.date
             });
+        }
+    }
+
+    /**
+     * Update the linen count badge in the room list
+     */
+    function updateRoomListBadge() {
+        if (!currentLinenState.room_id) {
+            return;
+        }
+
+        // Find the room row in the list
+        const $roomRow = $('.hhdl-room-row[data-room-id="' + currentLinenState.room_id + '"]');
+        if (!$roomRow.length) {
+            return;
+        }
+
+        // Calculate total count from all items
+        let totalCount = 0;
+        Object.values(currentLinenState.currentCounts).forEach(function(count) {
+            totalCount += parseInt(count) || 0;
+        });
+
+        // Find the linen badge
+        const $linenBadge = $roomRow.find('.hhdl-linen-count-badge');
+        const $linenStatus = $roomRow.find('.hhdl-linen-status');
+
+        if ($linenBadge.length) {
+            // Update badge number
+            $linenBadge.text(totalCount);
+
+            // Update status classes based on lock state
+            if (currentLinenState.isLocked) {
+                $linenStatus.removeClass('hhdl-linen-unsaved').addClass('hhdl-linen-saved');
+                $linenStatus.attr('title', totalCount + ' linen items (saved)');
+            } else {
+                $linenStatus.removeClass('hhdl-linen-saved').addClass('hhdl-linen-unsaved');
+                $linenStatus.attr('title', totalCount + ' linen items (unsaved)');
+            }
+
+            // Hide badge if count is 0
+            if (totalCount === 0) {
+                $linenBadge.hide();
+            } else {
+                $linenBadge.show();
+            }
         }
     }
 
@@ -276,6 +325,9 @@
                         $section.find('button.linen-count-up, button.linen-count-down').prop('disabled', true);
                         $section.find('.linen-count-value').prop('readonly', true);
 
+                        // Update state to locked
+                        currentLinenState.isLocked = true;
+
                         // Change button to edit mode
                         $button.removeClass('button-primary hhlc-submit-linen-count')
                                .addClass('hhlc-edit-linen-count')
@@ -298,6 +350,9 @@
                         } else {
                             $section.append('<div class="hhlc-linen-metadata">' + metadataHtml + '</div>');
                         }
+
+                        // Update room list badge to show saved state
+                        updateRoomListBadge();
 
                         // Show success message
                         $status.html('<span class="notice notice-success">Count submitted successfully</span>');
@@ -366,11 +421,17 @@
                         $section.find('button.linen-count-up, button.linen-count-down').prop('disabled', false);
                         $section.find('.linen-count-value').prop('readonly', false);
 
+                        // Update state to unlocked
+                        currentLinenState.isLocked = false;
+
                         // Change button back to submit mode
                         $button.removeClass('hhlc-edit-linen-count')
                                .addClass('button-primary hhlc-submit-linen-count')
                                .prop('disabled', false)
                                .text('Submit Count');
+
+                        // Update room list badge to show unsaved state
+                        updateRoomListBadge();
 
                         // Show notification
                         $status.html('<span class="notice notice-info">Count unlocked for editing</span>');
