@@ -53,6 +53,7 @@ class HHLC_Reports {
         // AJAX handlers for calendar data
         add_action('wp_ajax_hhlc_get_linen_calendar_data', array($this, 'ajax_get_calendar_data'));
         add_action('wp_ajax_hhlc_get_linen_day_details', array($this, 'ajax_get_day_details'));
+        add_action('wp_ajax_hhlc_get_linen_summary', array($this, 'ajax_get_summary'));
         add_action('wp_ajax_hhlc_export_linen_report', array($this, 'ajax_export_report'));
 
         // Enqueue assets
@@ -341,14 +342,8 @@ class HHLC_Reports {
                         <div class="day-number"><?php echo $day; ?></div>
                         <?php if ($has_data) : ?>
                         <div class="day-summary">
-                            <div class="room-count" title="Rooms">
-                                <span class="material-symbols-outlined">bed</span>
-                                <?php echo esc_html($day_data['room_count']); ?>
-                            </div>
-                            <div class="item-count" title="Total Items">
-                                <span class="material-symbols-outlined">checkroom</span>
-                                <?php echo esc_html($day_data['total_items']); ?>
-                            </div>
+                            <div class="room-count">Rooms <?php echo esc_html($day_data['room_count']); ?></div>
+                            <div class="item-count">Items <?php echo esc_html($day_data['total_items']); ?></div>
                         </div>
                         <?php endif; ?>
                     </td>
@@ -420,12 +415,18 @@ class HHLC_Reports {
             $linen_items = isset($location_settings['linen_items']) ? $location_settings['linen_items'] : array();
         }
 
+        // Get room names lookup
+        $room_names = $this->get_room_names($location_id);
+
         // Group results by room
         $rooms = array();
         foreach ($results as $row) {
             if (!isset($rooms[$row->room_id])) {
+                $room_name = isset($room_names[$row->room_id]) ? $room_names[$row->room_id] : $row->room_id;
+
                 $rooms[$row->room_id] = array(
                     'room_id' => $row->room_id,
+                    'room_name' => $room_name,
                     'submitted_by' => $row->submitted_by_name,
                     'submitted_at' => $row->submitted_at,
                     'items' => array(),
@@ -452,20 +453,20 @@ class HHLC_Reports {
             <?php if (empty($rooms)) : ?>
                 <p>No linen counts recorded for this date.</p>
             <?php else : ?>
-                <table class="wp-list-table widefat fixed striped">
+                <table class="wp-list-table widefat fixed striped hhlc-day-details-table">
                     <thead>
                         <tr>
-                            <th>Room</th>
-                            <th>Items</th>
-                            <th>Total Count</th>
-                            <th>Submitted By</th>
-                            <th>Time</th>
+                            <th style="width: 12%;">Room</th>
+                            <th style="width: 40%;">Items</th>
+                            <th style="width: 12%;">Total Count</th>
+                            <th style="width: 18%;">Submitted By</th>
+                            <th style="width: 10%;">Time</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($rooms as $room) : ?>
                         <tr>
-                            <td><strong><?php echo esc_html($room['room_id']); ?></strong></td>
+                            <td><strong><?php echo esc_html($room['room_name']); ?></strong></td>
                             <td>
                                 <?php foreach ($room['items'] as $item) : ?>
                                     <span class="linen-item-badge">
@@ -531,6 +532,198 @@ class HHLC_Reports {
             }
         }
         return null;
+    }
+
+    /**
+     * Get room names from hotel settings
+     *
+     * @param int $location_id Location ID
+     * @return array Room names lookup array [room_id => room_name]
+     */
+    private function get_room_names($location_id) {
+        $room_names = array();
+
+        if ($location_id <= 0) {
+            return $room_names;
+        }
+
+        // Get hotel from location
+        $hotel = null;
+        if (function_exists('hha')) {
+            $hotel = hha()->hotels->get($location_id);
+        }
+
+        if (!$hotel) {
+            return $room_names;
+        }
+
+        // Get room data from Hotel Hub integration settings
+        $integration = hha()->integrations->get_settings($hotel->id, 'newbook');
+        if (empty($integration)) {
+            return $room_names;
+        }
+
+        // Build room name lookup from categories_sort
+        $categories_sort = isset($integration['categories_sort']) ? $integration['categories_sort'] : array();
+
+        foreach ($categories_sort as $category) {
+            // Skip excluded categories
+            if (!empty($category['excluded'])) {
+                continue;
+            }
+
+            if (isset($category['sites']) && is_array($category['sites'])) {
+                foreach ($category['sites'] as $site) {
+                    $site_id = isset($site['site_id']) ? $site['site_id'] : '';
+                    $site_name = isset($site['site_name']) ? $site['site_name'] : '';
+
+                    if ($site_id && $site_name) {
+                        // Store with both string and int keys for flexibility
+                        $room_names[(string)$site_id] = $site_name;
+                        $room_names[(int)$site_id] = $site_name;
+                    }
+                }
+            }
+        }
+
+        return $room_names;
+    }
+
+    /**
+     * AJAX handler to get summary report
+     */
+    public function ajax_get_summary() {
+        // Verify nonce
+        if (!check_ajax_referer('hhlc_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+
+        $location_id = isset($_POST['location_id']) ? intval($_POST['location_id']) : 0;
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
+        $end_date = isset($_POST['end_date']) ? sanitize_text_field($_POST['end_date']) : '';
+
+        if (empty($start_date) || empty($end_date)) {
+            wp_send_json_error('Start and end dates required');
+            return;
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'hhlc_linen_counts';
+
+        // Build query for summary stats
+        $query = "SELECT
+                    COUNT(DISTINCT service_date) as days_with_data,
+                    COUNT(DISTINCT room_id) as total_rooms,
+                    COUNT(DISTINCT linen_item_id) as total_item_types,
+                    SUM(count) as total_items,
+                    COUNT(DISTINCT submitted_by) as total_staff
+                  FROM {$table_name}
+                  WHERE service_date BETWEEN %s AND %s";
+
+        $query_params = array($start_date, $end_date);
+
+        if ($location_id > 0) {
+            $query .= " AND location_id = %d";
+            $query_params[] = $location_id;
+        }
+
+        $summary = $wpdb->get_row($wpdb->prepare($query, $query_params));
+
+        // Get breakdown by item type
+        $item_query = "SELECT
+                        linen_item_id,
+                        SUM(count) as total_count,
+                        COUNT(DISTINCT room_id) as room_count
+                      FROM {$table_name}
+                      WHERE service_date BETWEEN %s AND %s";
+
+        $item_params = array($start_date, $end_date);
+
+        if ($location_id > 0) {
+            $item_query .= " AND location_id = %d";
+            $item_params[] = $location_id;
+        }
+
+        $item_query .= " GROUP BY linen_item_id ORDER BY total_count DESC";
+
+        $items_breakdown = $wpdb->get_results($wpdb->prepare($item_query, $item_params));
+
+        // Get linen items configuration for names
+        $linen_items = array();
+        if ($location_id > 0) {
+            $settings = get_option('hhlc_location_settings', array());
+            $location_settings = isset($settings[$location_id]) ? $settings[$location_id] : array();
+            $linen_items = isset($location_settings['linen_items']) ? $location_settings['linen_items'] : array();
+        }
+
+        // Enhance items with names
+        foreach ($items_breakdown as $item) {
+            $item_details = $this->find_linen_item($linen_items, $item->linen_item_id);
+            $item->item_name = $item_details ? $item_details['name'] : $item->linen_item_id;
+            $item->item_shortcode = $item_details ? $item_details['shortcode'] : '';
+        }
+
+        // Generate HTML
+        ob_start();
+        ?>
+        <div class="hhlc-summary-report">
+            <div class="summary-overview">
+                <h3>Overview</h3>
+                <div class="summary-stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo esc_html($summary->days_with_data); ?></div>
+                        <div class="stat-label">Days with Data</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo esc_html($summary->total_rooms); ?></div>
+                        <div class="stat-label">Total Rooms</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo esc_html($summary->total_items); ?></div>
+                        <div class="stat-label">Total Items Counted</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo esc_html($summary->total_staff); ?></div>
+                        <div class="stat-label">Staff Members</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="items-breakdown">
+                <h3>Breakdown by Item Type</h3>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Total Count</th>
+                            <th>Rooms</th>
+                            <th>Average per Room</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($items_breakdown as $item) : ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($item->item_name); ?></strong></td>
+                            <td><?php echo esc_html($item->total_count); ?></td>
+                            <td><?php echo esc_html($item->room_count); ?></td>
+                            <td><?php echo number_format($item->total_count / max(1, $item->room_count), 2); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php
+        $html = ob_get_clean();
+
+        wp_send_json_success(array(
+            'html' => $html,
+            'data' => array(
+                'summary' => $summary,
+                'items' => $items_breakdown
+            )
+        ));
     }
 
     /**
@@ -674,25 +867,27 @@ class HHLC_Reports {
         /* Calendar styles */
         .hhdl-calendar-container { max-width: 1200px; margin: 0 auto; }
         .hhdl-calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .hhdl-calendar-table { width: 100%; border-collapse: collapse; }
-        .hhdl-calendar-table th { background: #f0f0f0; padding: 10px; text-align: center; font-weight: bold; }
-        .hhdl-calendar-table td { border: 1px solid #ddd; padding: 5px; height: 100px; vertical-align: top; position: relative; }
+        .hhdl-calendar-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .hhdl-calendar-table th { background: #f0f0f0; padding: 10px; text-align: center; font-weight: bold; width: 14.28%; }
+        .hhdl-calendar-table td { border: 1px solid #ddd; padding: 8px; height: 100px; vertical-align: top; position: relative; width: 14.28%; }
         .calendar-day { cursor: pointer; transition: background 0.2s; }
         .calendar-day:hover { background: #f5f5f5; }
         .calendar-day.has-data { background: #e8f5e9; }
         .calendar-day.today { background: #fff3cd; }
-        .day-number { font-weight: bold; margin-bottom: 5px; }
-        .day-summary { font-size: 11px; }
-        .day-summary div { display: inline-block; margin-right: 5px; }
+        .day-number { font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+        .day-summary { font-size: 11px; line-height: 1.6; }
+        .day-summary .room-count,
+        .day-summary .item-count { display: block; margin-bottom: 2px; }
         .empty-day { background: #f9f9f9; cursor: default; }
 
         /* Modal styles */
         .hhdl-modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-        .hhdl-modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 80%; max-width: 800px; border-radius: 5px; }
+        .hhdl-modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 90%; max-width: 1000px; border-radius: 5px; max-height: 80vh; overflow-y: auto; }
         .hhdl-modal .close { float: right; font-size: 28px; cursor: pointer; }
 
         /* Day details styles */
-        .linen-item-badge { display: inline-block; margin: 2px; padding: 2px 6px; background: #e0e0e0; border-radius: 3px; font-size: 12px; }
+        .hhlc-day-details-table td { word-wrap: break-word; }
+        .linen-item-badge { display: inline-block; margin: 3px 4px 3px 0; padding: 4px 8px; background: #e0e0e0; border-radius: 3px; font-size: 12px; white-space: nowrap; }
         .item-totals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; }
         .total-item { padding: 10px; background: #f5f5f5; border-radius: 3px; display: flex; justify-content: space-between; }
         .grand-total { margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 3px; }
@@ -700,6 +895,14 @@ class HHLC_Reports {
         /* Summary styles */
         .hhdl-summary-controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
         #summary-results { min-height: 300px; }
+        .hhlc-summary-report { margin-top: 20px; }
+        .summary-overview { margin-bottom: 30px; }
+        .summary-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        .stat-box { background: #f5f5f5; padding: 20px; border-radius: 5px; text-align: center; border: 1px solid #ddd; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #0073aa; margin-bottom: 5px; }
+        .stat-label { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .items-breakdown { margin-top: 30px; }
+        .items-breakdown h3 { margin-bottom: 15px; }
         ';
     }
 
@@ -857,12 +1060,37 @@ class HHLC_Reports {
 
                 console.log('HHLC Reports: Summary params - location:', locationId, 'dates:', startDate, '-', endDate);
 
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+
                 // Load summary data
                 $('#summary-results').html('<p>Loading summary report...</p>');
 
-                // This would call an AJAX handler to generate the summary
-                // TODO: Implement summary report AJAX handler
-                $('#summary-results').html('<p><strong>Summary report functionality coming soon.</strong><br>This will show aggregated statistics for the date range selected.</p>');
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'hhlc_get_linen_summary',
+                        nonce: '" . wp_create_nonce('hhlc_ajax_nonce') . "',
+                        location_id: locationId,
+                        start_date: startDate,
+                        end_date: endDate
+                    },
+                    success: function(response) {
+                        console.log('HHLC Reports: Summary data received', response);
+                        if (response.success) {
+                            $('#summary-results').html(response.data.html);
+                        } else {
+                            $('#summary-results').html('<p>Error loading summary: ' + (response.data || 'Unknown error') + '</p>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('HHLC Reports: Summary load error', error);
+                        $('#summary-results').html('<p>Error loading summary: ' + error + '</p>');
+                    }
+                });
             });
 
             // Export data
