@@ -605,17 +605,6 @@
                 } else {
                     $modalSection.append('<div class="hhlc-linen-metadata">' + metadataHtml + '</div>');
                 }
-
-                // Show notification ONLY if:
-                // 1. Modal is open for this room
-                // 2. Another user made the update
-                // 3. Update was recent (last_updated_by exists means it was edited, not just submitted)
-                if (update.last_updated_by && update.last_updated_by != hhlcAjax.user_id) {
-                    const updaterName = update.last_updated_by_name || update.submitted_by_name;
-                    showToast('Linen count updated by ' + updaterName + ' for room ' + update.room_id, 'info');
-                } else if (!update.last_updated_by && update.submitted_by != hhlcAjax.user_id) {
-                    showToast('Linen count submitted by ' + update.submitted_by_name + ' for room ' + update.room_id, 'info');
-                }
             } else {
                 console.log('HHLC: Skipping update - not for current room or modal not visible');
             }
