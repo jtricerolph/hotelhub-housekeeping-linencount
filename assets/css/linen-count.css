@@ -348,11 +348,11 @@
 @media (pointer: coarse) {
     .linen-count-up,
     .linen-count-down {
-        height: 45px;
+        height: 38px;
     }
 
     .linen-count-display {
-        height: 55px;
+        height: 47px;
     }
 
     .hhlc-submit-linen-count,
