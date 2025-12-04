@@ -956,7 +956,7 @@
         rooms.forEach(room => {
             const statusClass = 'status-' + room.status;
             html += '<tr data-room-id="' + escapeHtml(room.room_id) + '" data-status="' + room.status + '">';
-            html += '<td class="room-cell ' + statusClass + '">' + escapeHtml(room.room_id) + '</td>';
+            html += '<td class="room-cell ' + statusClass + '">' + escapeHtml(room.room_name || room.room_id) + '</td>';
 
             // Render counts for each linen item
             linenItems.forEach(item => {
@@ -966,7 +966,7 @@
 
             // Actions column
             html += '<td class="actions-cell">';
-            html += '<button class="button button-small hhlc-edit-room-count" data-room-id="' + escapeHtml(room.room_id) + '" title="Edit count">';
+            html += '<button class="button button-small hhlc-edit-room-count" data-room-id="' + escapeHtml(room.room_id) + '" data-room-name="' + escapeHtml(room.room_name || room.room_id) + '" title="Edit count">';
             html += '<span class="dashicons dashicons-edit"></span>';
             html += '</button>';
             html += '</td>';
@@ -992,7 +992,8 @@
         // Bind edit button handlers
         $('.hhlc-edit-room-count').on('click', function() {
             const roomId = $(this).data('room-id');
-            openEditModal(roomId);
+            const roomName = $(this).data('room-name');
+            openEditModal(roomId, roomName);
         });
 
         // Bind submit all handler
@@ -1172,11 +1173,11 @@
     /**
      * Open edit modal for a room
      */
-    function openEditModal(roomId) {
+    function openEditModal(roomId, roomName) {
         const locationId = $('.hhlc-reports-container').data('location');
         const date = getCurrentDate();
 
-        $('#hhlc-modal-room-title').text('Edit Spoilt Linen Count - ' + roomId);
+        $('#hhlc-modal-room-title').text('Edit Spoilt Linen Count - ' + (roomName || roomId));
         $('#hhlc-edit-modal').fadeIn(200);
 
         $.ajax({
