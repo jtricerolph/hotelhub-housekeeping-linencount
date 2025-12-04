@@ -869,7 +869,45 @@
 }
 
 .hhlc-confirm-modal {
+    background: white;
+    border-radius: 12px;
     max-width: 450px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.hhlc-confirm-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff3cd;
+    border-radius: 12px 12px 0 0;
+}
+
+.hhlc-confirm-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #856404;
+}
+
+.hhlc-confirm-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.hhlc-confirm-modal-body p {
+    margin: 0 0 15px 0;
+    line-height: 1.5;
 }
 
 @keyframes modalSlideIn {
@@ -1016,7 +1054,8 @@
         width: 100%;
     }
 
-    .hhlc-edit-modal {
+    .hhlc-edit-modal,
+    .hhlc-confirm-modal {
         max-width: 100%;
         margin: 0;
         border-radius: 0;

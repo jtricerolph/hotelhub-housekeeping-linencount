@@ -341,8 +341,8 @@ class HHLC_Display {
     private static function render_submit_all_modal() {
         ?>
         <div class="hhlc-edit-modal-overlay" id="hhlc-submit-all-modal" style="display: none;">
-            <div class="hhlc-edit-modal hhlc-confirm-modal">
-                <div class="hhlc-edit-modal-header">
+            <div class="hhlc-confirm-modal">
+                <div class="hhlc-confirm-modal-header">
                     <h3>
                         <span class="material-symbols-outlined">warning</span>
                         <span>Confirm Submit All</span>
@@ -351,7 +351,7 @@ class HHLC_Display {
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
-                <div class="hhlc-edit-modal-body">
+                <div class="hhlc-confirm-modal-body">
                     <p>Are you sure you want to submit all unsubmitted linen counts for today?</p>
                     <p>This will lock all unsubmitted counts and prevent further editing without permission.</p>
                     <div class="hhlc-modal-actions">
