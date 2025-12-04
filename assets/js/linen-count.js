@@ -1192,6 +1192,18 @@
             closeSubmitAllModal();
             submitAllUnsubmitted();
         });
+
+        // Result modal handlers
+        $(document).on('click', '.hhlc-result-close', function(e) {
+            e.preventDefault();
+            closeResultModal();
+        });
+
+        $(document).on('click', '#hhlc-result-modal', function(e) {
+            if (e.target === this) {
+                closeResultModal();
+            }
+        });
     }
 
     /**
@@ -1256,6 +1268,41 @@
     }
 
     /**
+     * Show result modal
+     */
+    function showResultModal(type, title, message) {
+        const $modal = $('#hhlc-result-modal');
+        const $header = $modal.find('.hhlc-result-modal-header');
+        const $icon = $('#hhlc-result-icon');
+        const $title = $('#hhlc-result-title');
+        const $message = $('#hhlc-result-message');
+
+        // Set type-specific styling
+        $header.removeClass('success error').addClass(type);
+
+        // Set icon based on type
+        if (type === 'success') {
+            $icon.text('check_circle');
+        } else if (type === 'error') {
+            $icon.text('error');
+        }
+
+        // Set content
+        $title.text(title);
+        $message.text(message);
+
+        // Show modal
+        $modal.fadeIn(200);
+    }
+
+    /**
+     * Close result modal
+     */
+    function closeResultModal() {
+        $('#hhlc-result-modal').fadeOut(200);
+    }
+
+    /**
      * Submit all unsubmitted counts
      */
     function submitAllUnsubmitted() {
@@ -1273,16 +1320,16 @@
             },
             success: function(response) {
                 if (response.success) {
-                    alert(response.data.message);
+                    showResultModal('success', 'Success', response.data.message);
                     // Reload today's counts
                     $('#today-counts-tab').data('loaded', false);
                     loadTodayCounts();
                 } else {
-                    alert('Error: ' + response.data);
+                    showResultModal('error', 'Error', response.data);
                 }
             },
             error: function() {
-                alert('Network error. Please try again.');
+                showResultModal('error', 'Network Error', 'Network error. Please try again.');
             }
         });
     }

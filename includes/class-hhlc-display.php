@@ -304,6 +304,9 @@ class HHLC_Display {
 
         <!-- Submit All Confirmation Modal -->
         <?php self::render_submit_all_modal(); ?>
+
+        <!-- Result Modal -->
+        <?php self::render_result_modal(); ?>
         <?php
     }
 
@@ -357,6 +360,33 @@ class HHLC_Display {
                     <div class="hhlc-modal-actions">
                         <button type="button" class="button hhlc-submit-all-cancel">Cancel</button>
                         <button type="button" class="button button-primary" id="hhlc-confirm-submit-all">Submit All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the result modal (for success/error messages)
+     */
+    private static function render_result_modal() {
+        ?>
+        <div class="hhlc-edit-modal-overlay" id="hhlc-result-modal" style="display: none;">
+            <div class="hhlc-result-modal">
+                <div class="hhlc-result-modal-header">
+                    <h3>
+                        <span class="material-symbols-outlined" id="hhlc-result-icon">check_circle</span>
+                        <span id="hhlc-result-title">Success</span>
+                    </h3>
+                    <button class="hhlc-modal-close hhlc-result-close" aria-label="Close">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="hhlc-result-modal-body">
+                    <p id="hhlc-result-message">Operation completed successfully</p>
+                    <div class="hhlc-modal-actions">
+                        <button type="button" class="button button-primary hhlc-result-close">OK</button>
                     </div>
                 </div>
             </div>
