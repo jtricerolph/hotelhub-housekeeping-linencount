@@ -192,10 +192,12 @@ class HHLC_Core {
         );
 
         // Localize script
+        $current_user = wp_get_current_user();
         wp_localize_script('hhlc-linen-count', 'hhlcAjax', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('hhlc_ajax_nonce'),
             'user_id' => get_current_user_id(),
+            'user_display_name' => $current_user->display_name,
             'strings' => array(
                 'submitting' => __('Submitting...', 'hhlc'),
                 'submitCount' => __('Submit Count', 'hhlc'),

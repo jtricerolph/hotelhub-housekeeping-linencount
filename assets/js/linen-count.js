@@ -578,21 +578,25 @@
 
                         // Show toast notification with who updated and what changed
                         const updaterName = update.last_updated_by_name || update.submitted_by_name;
+                        const isOwnUpdate = updaterName === hhlcAjax.user_display_name;
 
                         // Detect conflict: user had unsaved changes different from the update
-                        if (hadUnsavedChanges && currentInputValue !== update.count) {
-                            console.log('HHLC: CONFLICT DETECTED - User had unsaved changes that were overwritten');
+                        // Only show conflict if it was updated by someone ELSE
+                        if (hadUnsavedChanges && currentInputValue !== update.count && !isOwnUpdate) {
+                            console.log('HHLC: CONFLICT DETECTED - User had unsaved changes that were overwritten by another user');
                             showToast(
                                 '⚠️ CONFLICT: ' + itemShortcode + ' was updated by ' + updaterName + ' to ' + update.count + ' (you had ' + currentInputValue + ')',
                                 'warning'
                             );
-                        } else {
-                            // Normal update notification
+                        } else if (!isOwnUpdate) {
+                            // Normal update notification (only show if it's from another user)
                             console.log('HHLC: Showing toast notification for update by:', updaterName);
                             showToast(
                                 itemShortcode + ' updated by ' + updaterName + ' (was ' + originalValue + ', now ' + update.count + ')',
                                 'info'
                             );
+                        } else {
+                            console.log('HHLC: Skipping toast notification for own update');
                         }
 
                         // Remove emphasis after 3 seconds
