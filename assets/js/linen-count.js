@@ -273,8 +273,22 @@
         });
     }
 
-    // Create debounced version of auto-save (wait 800ms after last change)
-    const debouncedAutoSave = debounce(autoSaveLinenCount, 800);
+    // Per-item debounced auto-save
+    // This ensures each item has its own debounce timer, so updating multiple items
+    // quickly doesn't cancel previous items' saves
+    const autoSaveTimers = {};
+    function debouncedAutoSave(itemId, count) {
+        // Clear existing timer for this item
+        if (autoSaveTimers[itemId]) {
+            clearTimeout(autoSaveTimers[itemId]);
+        }
+
+        // Set new timer for this specific item
+        autoSaveTimers[itemId] = setTimeout(function() {
+            autoSaveLinenCount(itemId, count);
+            delete autoSaveTimers[itemId];
+        }, 800);
+    }
 
     /**
      * Initialize submit handler
