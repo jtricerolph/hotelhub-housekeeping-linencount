@@ -655,19 +655,33 @@
      * Show toast notification (uses existing daily-list toast function)
      */
     function showToast(message, type) {
-        if (window.showToast) {
+        console.log('HHLC showToast: Called with message:', message, 'type:', type);
+        console.log('HHLC showToast: window.showToast exists:', typeof window.showToast !== 'undefined');
+
+        if (typeof window.showToast === 'function') {
+            console.log('HHLC showToast: Using window.showToast');
             window.showToast(message, type);
         } else {
+            console.log('HHLC showToast: Using fallback');
             // Fallback if daily-list.js toast isn't available
+            type = type || 'info';
             const $toast = $('<div class="hhdl-toast hhdl-toast-' + type + '">' + message + '</div>');
             $('body').append($toast);
+
+            console.log('HHLC showToast: Toast element created and appended');
+
+            // Trigger animation
             setTimeout(function() {
-                $toast.addClass('show');
-            }, 100);
+                $toast.addClass('hhdl-toast-show');
+                console.log('HHLC showToast: Added show class');
+            }, 10);
+
+            // Auto-hide after 3 seconds
             setTimeout(function() {
-                $toast.removeClass('show');
+                $toast.removeClass('hhdl-toast-show');
                 setTimeout(function() {
                     $toast.remove();
+                    console.log('HHLC showToast: Toast removed');
                 }, 300);
             }, 3000);
         }
