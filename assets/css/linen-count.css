@@ -305,32 +305,32 @@
 /* Mobile responsiveness */
 @media (max-width: 768px) {
     .hhlc-linen-items-grid {
-        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        gap: 8px;
     }
 
     .hhlc-linen-item {
-        padding: 8px;
+        padding: 4px 6px;
     }
 
     .linen-shortcode {
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .linen-count-up,
     .linen-count-down {
-        width: 50px;
-        height: 35px;
-        font-size: 18px;
+        width: 42px;
+        height: 30px;
+        font-size: 15px;
     }
 
     .linen-count-display {
-        width: 50px;
-        height: 40px;
+        width: 42px;
+        height: 34px;
     }
 
     .linen-count-value {
-        font-size: 20px;
+        font-size: 16px;
     }
 
     .hhlc-linen-item-row {
