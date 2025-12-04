@@ -109,9 +109,17 @@ class HHLC_Heartbeat {
         $updates = $wpdb->get_results($wpdb->prepare($query, $query_params));
 
         if (!empty($updates)) {
+            // Get the most recent timestamp from the updates
+            // Since we ORDER BY DESC, the first record has the latest timestamp
+            $latest_timestamp = $updates[0]->submitted_at;
+            if (!empty($updates[0]->last_updated_at)) {
+                // Compare both timestamps and use the more recent one
+                $latest_timestamp = max($updates[0]->submitted_at, $updates[0]->last_updated_at);
+            }
+
             $response['hhlc_linen_updates'] = array(
                 'updates' => $updates,
-                'timestamp' => current_time('mysql'),
+                'timestamp' => $latest_timestamp,  // Use timestamp of most recent update
                 'for_room' => $current_room
             );
         }
