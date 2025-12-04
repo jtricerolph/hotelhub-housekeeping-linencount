@@ -472,6 +472,7 @@ class HHLC_Ajax {
             $room_id = $room['room_id'];
             $room_data[$room_id] = array(
                 'room_id' => $room_id,
+                'room_name' => $room['room_name'],
                 'counts' => array(),
                 'status' => 'none', // none, unsubmitted, submitted
                 'has_any_count' => false
@@ -761,33 +762,124 @@ class HHLC_Ajax {
     }
 
     /**
-     * Get all rooms for a location
-     * This helper method fetches rooms from the daily list or returns a default list
+     * Get all rooms for a location using Hotel Hub settings
      */
     private function get_all_rooms($location_id) {
-        // Try to get rooms from the daily list module
-        if (class_exists('HHDL_Display')) {
-            // Use daily list to get today's rooms
-            // For now, we'll return a basic structure
-            // In production, this would integrate with the NewBook API or daily list cache
+        // Get Hotel Hub hotel record
+        $hotel = $this->get_hotel_from_location($location_id);
+        if (!$hotel) {
+            return array();
         }
 
-        // Fallback: Get unique room IDs from linen counts table
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'hhlc_linen_counts';
+        // Get NewBook API client
+        $api = $this->get_newbook_api($location_id);
+        if (!$api) {
+            return array();
+        }
 
-        $room_ids = $wpdb->get_col($wpdb->prepare(
-            "SELECT DISTINCT room_id FROM {$table_name}
-            WHERE location_id = %d
-            ORDER BY room_id ASC",
-            $location_id
-        ));
+        // Get integration settings including categories and sort order
+        $integration = function_exists('hha') ? hha()->integrations->get_settings($hotel->id, 'newbook') : array();
+        $categories_sort = isset($integration['categories_sort']) ? $integration['categories_sort'] : array();
 
+        // Fetch sites from NewBook
+        $sites_response = $api->get_sites(true);
+        $sites = isset($sites_response['data']) ? $sites_response['data'] : array();
+
+        if (empty($sites)) {
+            return array();
+        }
+
+        // Build site-to-category map and ordering
+        $site_to_category = array();
+        $site_order_map = array();
+        $excluded_sites = array();
+
+        foreach ($categories_sort as $category_index => $category) {
+            if (isset($category['sites']) && is_array($category['sites'])) {
+                foreach ($category['sites'] as $site_index => $site_entry) {
+                    $site_id = $site_entry['site_id'];
+
+                    // Check if site is excluded
+                    if (isset($site_entry['excluded']) && $site_entry['excluded']) {
+                        $excluded_sites[] = $site_id;
+                        continue;
+                    }
+
+                    $site_to_category[$site_id] = array(
+                        'id' => isset($category['id']) ? $category['id'] : 'cat_' . $category_index,
+                        'name' => isset($category['name']) ? $category['name'] : 'Category ' . ($category_index + 1)
+                    );
+
+                    $site_order_map[$site_id] = array(
+                        'category_order' => $category_index,
+                        'site_order' => $site_index
+                    );
+                }
+            }
+        }
+
+        // Build rooms array with proper ordering
         $rooms = array();
-        foreach ($room_ids as $room_id) {
-            $rooms[] = array('room_id' => $room_id);
+        foreach ($sites as $site) {
+            $site_id = $site['site_id'];
+
+            // Skip excluded sites
+            if (in_array($site_id, $excluded_sites)) {
+                continue;
+            }
+
+            $rooms[] = array(
+                'room_id' => $site_id,
+                'room_name' => isset($site['site_name']) ? $site['site_name'] : $site_id,
+                'category' => isset($site_to_category[$site_id]) ? $site_to_category[$site_id] : array(),
+                'order' => isset($site_order_map[$site_id]) ? $site_order_map[$site_id] : array('category_order' => 999, 'site_order' => 999)
+            );
         }
+
+        // Sort rooms by category order then site order
+        usort($rooms, function($a, $b) {
+            $cat_diff = $a['order']['category_order'] - $b['order']['category_order'];
+            if ($cat_diff !== 0) {
+                return $cat_diff;
+            }
+            return $a['order']['site_order'] - $b['order']['site_order'];
+        });
 
         return $rooms;
+    }
+
+    /**
+     * Get hotel record from location ID
+     */
+    private function get_hotel_from_location($location_id) {
+        if (!function_exists('hha')) {
+            return null;
+        }
+
+        $hotels = hha()->hotels->get_all();
+        foreach ($hotels as $hotel) {
+            if ($hotel->id == $location_id) {
+                return $hotel;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get NewBook API instance for location
+     */
+    private function get_newbook_api($location_id) {
+        if (!function_exists('hha')) {
+            return null;
+        }
+
+        $hotel = $this->get_hotel_from_location($location_id);
+        if (!$hotel) {
+            return null;
+        }
+
+        $api_manager = hha()->integrations->get_api_manager($hotel->id, 'newbook');
+        return $api_manager ? $api_manager : null;
     }
 }

@@ -301,6 +301,9 @@ class HHLC_Display {
 
         <!-- Edit Modal -->
         <?php self::render_edit_modal(); ?>
+
+        <!-- Submit All Confirmation Modal -->
+        <?php self::render_submit_all_modal(); ?>
         <?php
     }
 
@@ -325,6 +328,35 @@ class HHLC_Display {
                     <div class="hhlc-loading">
                         <span class="spinner is-active"></span>
                         <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the submit all confirmation modal
+     */
+    private static function render_submit_all_modal() {
+        ?>
+        <div class="hhlc-edit-modal-overlay" id="hhlc-submit-all-modal" style="display: none;">
+            <div class="hhlc-edit-modal hhlc-confirm-modal">
+                <div class="hhlc-edit-modal-header">
+                    <h3>
+                        <span class="material-symbols-outlined">warning</span>
+                        <span>Confirm Submit All</span>
+                    </h3>
+                    <button class="hhlc-modal-close hhlc-submit-all-cancel" aria-label="Close">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="hhlc-edit-modal-body">
+                    <p>Are you sure you want to submit all unsubmitted linen counts for today?</p>
+                    <p>This will lock all unsubmitted counts and prevent further editing without permission.</p>
+                    <div class="hhlc-modal-actions">
+                        <button type="button" class="button hhlc-submit-all-cancel">Cancel</button>
+                        <button type="button" class="button button-primary" id="hhlc-confirm-submit-all">Submit All</button>
                     </div>
                 </div>
             </div>

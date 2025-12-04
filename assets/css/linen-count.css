@@ -841,7 +841,7 @@
     color: #0073aa;
 }
 
-/* Edit Modal */
+/* Edit Modal and Confirmation Modals */
 .hhlc-edit-modal-overlay {
     position: fixed;
     top: 0;
@@ -858,7 +858,7 @@
 
 .hhlc-edit-modal {
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     max-width: 600px;
     width: 100%;
     max-height: 90vh;
@@ -866,6 +866,10 @@
     flex-direction: column;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     animation: modalSlideIn 0.3s ease;
+}
+
+.hhlc-confirm-modal {
+    max-width: 450px;
 }
 
 @keyframes modalSlideIn {
@@ -886,7 +890,7 @@
     align-items: center;
     justify-content: space-between;
     background: #f8f9fa;
-    border-radius: 8px 8px 0 0;
+    border-radius: 12px 12px 0 0;
 }
 
 .hhlc-edit-modal-header h3 {
@@ -920,6 +924,15 @@
     padding: 20px;
     overflow-y: auto;
     flex: 1;
+}
+
+.hhlc-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
 }
 
 /* Submit All Bar */

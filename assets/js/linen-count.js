@@ -996,9 +996,9 @@
             openEditModal(roomId, roomName);
         });
 
-        // Bind submit all handler
+        // Bind submit all handler - opens confirmation modal
         $('#hhlc-submit-all-counts').on('click', function() {
-            submitAllUnsubmitted();
+            $('#hhlc-submit-all-modal').fadeIn(200);
         });
     }
 
@@ -1157,16 +1157,40 @@
      * Initialize edit modal
      */
     function initEditModal() {
-        // Close modal handlers
-        $('.hhlc-modal-close, .hhlc-edit-modal-overlay').on('click', function(e) {
+        // Close edit modal handlers
+        $(document).on('click', '#hhlc-edit-modal .hhlc-modal-close', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeEditModal();
+        });
+
+        $(document).on('click', '#hhlc-edit-modal', function(e) {
             if (e.target === this) {
                 closeEditModal();
             }
         });
 
         // Prevent modal content clicks from closing
-        $('.hhlc-edit-modal').on('click', function(e) {
+        $(document).on('click', '#hhlc-edit-modal .hhlc-edit-modal', function(e) {
             e.stopPropagation();
+        });
+
+        // Submit All confirmation modal handlers
+        $(document).on('click', '.hhlc-submit-all-cancel', function(e) {
+            e.preventDefault();
+            closeSubmitAllModal();
+        });
+
+        $(document).on('click', '#hhlc-submit-all-modal', function(e) {
+            if (e.target === this) {
+                closeSubmitAllModal();
+            }
+        });
+
+        $(document).on('click', '#hhlc-confirm-submit-all', function(e) {
+            e.preventDefault();
+            closeSubmitAllModal();
+            submitAllUnsubmitted();
         });
     }
 
@@ -1225,13 +1249,16 @@
     }
 
     /**
+     * Close submit all modal
+     */
+    function closeSubmitAllModal() {
+        $('#hhlc-submit-all-modal').fadeOut(200);
+    }
+
+    /**
      * Submit all unsubmitted counts
      */
     function submitAllUnsubmitted() {
-        if (!confirm('Submit all unsubmitted counts for today?')) {
-            return;
-        }
-
         const locationId = $('.hhlc-reports-container').data('location');
         const date = getCurrentDate();
 
