@@ -763,6 +763,7 @@ class HHLC_Ajax {
 
     /**
      * Get all rooms for a location using Hotel Hub settings
+     * Rooms are stored in the integration settings, not fetched from API
      */
     private function get_all_rooms($location_id) {
         try {
@@ -773,79 +774,55 @@ class HHLC_Ajax {
                 return array();
             }
 
-            // Get NewBook API client
-            $api = $this->get_newbook_api($location_id);
-            if (!$api) {
-                error_log('HHLC: API not found for location ' . $location_id);
-                return array();
-            }
-
             // Get integration settings including categories and sort order
-            $integration = function_exists('hha') ? hha()->integrations->get_settings($hotel->id, 'newbook') : array();
-            $categories_sort = isset($integration['categories_sort']) ? $integration['categories_sort'] : array();
-        } catch (Exception $e) {
-            error_log('HHLC: Error getting hotel/API: ' . $e->getMessage());
-            return array();
-        }
-
-        try {
-            // Fetch sites from NewBook
-            $sites_response = $api->get_sites(true);
-            $sites = isset($sites_response['data']) ? $sites_response['data'] : array();
-
-            if (empty($sites)) {
-                error_log('HHLC: No sites returned from API');
+            if (!function_exists('hha')) {
+                error_log('HHLC: hha() function not found');
                 return array();
             }
 
-            // Build site-to-category map and ordering
-            $site_to_category = array();
-            $site_order_map = array();
-            $excluded_sites = array();
+            $integration = hha()->integrations->get_settings($hotel->id, 'newbook');
+            $categories_sort = isset($integration['categories_sort']) ? $integration['categories_sort'] : array();
+
+            if (empty($categories_sort)) {
+                error_log('HHLC: No categories_sort found in integration settings');
+                return array();
+            }
+
+            // Build rooms array from settings
+            $rooms = array();
 
             foreach ($categories_sort as $category_index => $category) {
-                if (isset($category['sites']) && is_array($category['sites'])) {
-                    foreach ($category['sites'] as $site_index => $site_entry) {
-                        $site_id = $site_entry['site_id'];
-
-                        // Check if site is excluded
-                        if (isset($site_entry['excluded']) && $site_entry['excluded']) {
-                            $excluded_sites[] = $site_id;
-                            continue;
-                        }
-
-                        $site_to_category[$site_id] = array(
-                            'id' => isset($category['id']) ? $category['id'] : 'cat_' . $category_index,
-                            'name' => isset($category['name']) ? $category['name'] : 'Category ' . ($category_index + 1)
-                        );
-
-                        $site_order_map[$site_id] = array(
-                            'category_order' => $category_index,
-                            'site_order' => $site_index
-                        );
-                    }
-                }
-            }
-
-            // Build rooms array with proper ordering
-            $rooms = array();
-            foreach ($sites as $site) {
-                $site_id = $site['site_id'];
-
-                // Skip excluded sites
-                if (in_array($site_id, $excluded_sites)) {
+                if (!isset($category['sites']) || !is_array($category['sites'])) {
                     continue;
                 }
 
-                $rooms[] = array(
-                    'room_id' => $site_id,
-                    'room_name' => isset($site['site_name']) ? $site['site_name'] : $site_id,
-                    'category' => isset($site_to_category[$site_id]) ? $site_to_category[$site_id] : array(),
-                    'order' => isset($site_order_map[$site_id]) ? $site_order_map[$site_id] : array('category_order' => 999, 'site_order' => 999)
+                $category_info = array(
+                    'id' => isset($category['id']) ? $category['id'] : 'cat_' . $category_index,
+                    'name' => isset($category['name']) ? $category['name'] : 'Category ' . ($category_index + 1)
                 );
+
+                foreach ($category['sites'] as $site_index => $site_entry) {
+                    // Skip excluded sites
+                    if (isset($site_entry['excluded']) && $site_entry['excluded']) {
+                        continue;
+                    }
+
+                    $site_id = $site_entry['site_id'];
+                    $site_name = isset($site_entry['site_name']) ? $site_entry['site_name'] : $site_id;
+
+                    $rooms[] = array(
+                        'room_id' => $site_id,
+                        'room_name' => $site_name,
+                        'category' => $category_info,
+                        'order' => array(
+                            'category_order' => $category_index,
+                            'site_order' => $site_index
+                        )
+                    );
+                }
             }
 
-            // Sort rooms by category order then site order
+            // Sort rooms by category order then site order (already in order from iteration)
             usort($rooms, function($a, $b) {
                 $cat_diff = $a['order']['category_order'] - $b['order']['category_order'];
                 if ($cat_diff !== 0) {
@@ -854,10 +831,10 @@ class HHLC_Ajax {
                 return $a['order']['site_order'] - $b['order']['site_order'];
             });
 
-            error_log('HHLC: Successfully loaded ' . count($rooms) . ' rooms');
+            error_log('HHLC: Successfully loaded ' . count($rooms) . ' rooms from settings');
             return $rooms;
         } catch (Exception $e) {
-            error_log('HHLC: Error fetching sites: ' . $e->getMessage());
+            error_log('HHLC: Error getting rooms from settings: ' . $e->getMessage());
             return array();
         }
     }
@@ -894,39 +871,4 @@ class HHLC_Ajax {
         }
     }
 
-    /**
-     * Get NewBook API instance for location
-     */
-    private function get_newbook_api($location_id) {
-        try {
-            if (!function_exists('hha')) {
-                error_log('HHLC: hha() function not found for API');
-                return null;
-            }
-
-            $hotel = $this->get_hotel_from_location($location_id);
-            if (!$hotel) {
-                error_log('HHLC: No hotel for API lookup');
-                return null;
-            }
-
-            $hha = hha();
-            if (!isset($hha->integrations)) {
-                error_log('HHLC: hha()->integrations not found');
-                return null;
-            }
-
-            $api_manager = $hha->integrations->get_api_manager($hotel->id, 'newbook');
-            if ($api_manager) {
-                error_log('HHLC: Found API manager');
-                return $api_manager;
-            }
-
-            error_log('HHLC: API manager not found');
-            return null;
-        } catch (Exception $e) {
-            error_log('HHLC: Exception in get_newbook_api: ' . $e->getMessage());
-            return null;
-        }
-    }
 }
