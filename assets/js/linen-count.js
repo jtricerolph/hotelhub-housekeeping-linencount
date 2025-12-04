@@ -149,6 +149,13 @@
         // Update the room list badge
         updateRoomListBadge();
 
+        // Trigger immediate heartbeat check to fetch any pending updates before saving
+        // This helps prevent conflicts when multiple users are editing simultaneously
+        if (typeof wp !== 'undefined' && wp.heartbeat) {
+            console.log('HHLC: Triggering immediate heartbeat check before save');
+            wp.heartbeat.connectNow();
+        }
+
         // Trigger auto-save if we have location data
         if (currentLinenState.location_id && currentLinenState.room_id && currentLinenState.date) {
             console.log('HHLC: Triggering auto-save for item', itemId, 'with count', count);
@@ -548,6 +555,11 @@
                     // Only update if value has changed to avoid overwriting user's current edits
                     if (currentInputValue !== update.count) {
                         console.log('HHLC: Updating input value from', currentInputValue, 'to', update.count);
+
+                        // Check if this is a conflict - user had unsaved changes
+                        const hadUnsavedChanges = $item.hasClass('changed');
+                        const originalValue = parseInt($input.data('original')) || 0;
+
                         $input.val(update.count);
                         $input.data('original', update.count);
 
@@ -566,12 +578,22 @@
 
                         // Show toast notification with who updated and what changed
                         const updaterName = update.last_updated_by_name || update.submitted_by_name;
-                        // Always show notification for heartbeat updates (supports multi-device scenarios)
-                        console.log('HHLC: Showing toast notification for update by:', updaterName);
-                        showToast(
-                            itemShortcode + ' updated by ' + updaterName + ' (was ' + currentInputValue + ', now ' + update.count + ')',
-                            'info'
-                        );
+
+                        // Detect conflict: user had unsaved changes different from the update
+                        if (hadUnsavedChanges && currentInputValue !== update.count) {
+                            console.log('HHLC: CONFLICT DETECTED - User had unsaved changes that were overwritten');
+                            showToast(
+                                '⚠️ CONFLICT: ' + itemShortcode + ' was updated by ' + updaterName + ' to ' + update.count + ' (you had ' + currentInputValue + ')',
+                                'warning'
+                            );
+                        } else {
+                            // Normal update notification
+                            console.log('HHLC: Showing toast notification for update by:', updaterName);
+                            showToast(
+                                itemShortcode + ' updated by ' + updaterName + ' (was ' + originalValue + ', now ' + update.count + ')',
+                                'info'
+                            );
+                        }
 
                         // Remove emphasis after 3 seconds
                         setTimeout(function() {
@@ -580,6 +602,9 @@
 
                         // If locked, update immediately; if unlocked, just update the original value
                         if ($modalSection.hasClass('locked')) {
+                            $item.removeClass('changed');
+                        } else {
+                            // Remove changed class since we've updated to the new value
                             $item.removeClass('changed');
                         }
 
