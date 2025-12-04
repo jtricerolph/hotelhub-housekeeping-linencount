@@ -133,7 +133,7 @@
     background: white;
     border: 2px solid #0073aa;
     width: 42px;
-    height: 34px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -143,7 +143,7 @@
     width: 100%;
     height: 100%;
     text-align: center;
-    font-size: 16px;
+    font-size: 12px;
     font-weight: bold;
     border: none;
     background: transparent;
@@ -326,11 +326,11 @@
 
     .linen-count-display {
         width: 42px;
-        height: 34px;
+        height: 28px;
     }
 
     .linen-count-value {
-        font-size: 16px;
+        font-size: 12px;
     }
 
     .hhlc-linen-item-row {
@@ -352,7 +352,7 @@
     }
 
     .linen-count-display {
-        height: 47px;
+        height: 38px;
     }
 
     .hhlc-submit-linen-count,
