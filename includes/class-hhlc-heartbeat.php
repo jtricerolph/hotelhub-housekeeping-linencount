@@ -94,7 +94,7 @@ class HHLC_Heartbeat {
             LEFT JOIN {$wpdb->users} u2 ON lc.last_updated_by = u2.ID
             WHERE lc.location_id = %d
             AND lc.service_date = %s
-            AND (lc.submitted_at >= %s OR (lc.last_updated_at IS NOT NULL AND lc.last_updated_at >= %s))";
+            AND (lc.submitted_at > %s OR (lc.last_updated_at IS NOT NULL AND lc.last_updated_at > %s))";
 
         $query_params = array($location_id, $viewing_date, $last_check, $last_check);
 
