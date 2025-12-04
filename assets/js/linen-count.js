@@ -815,13 +815,463 @@
 
         // Start watching for linen controls appearing in DOM
         watchForLinenControls();
+
+        // Initialize reports if container exists
+        if ($('.hhlc-reports-container').length) {
+            initReports();
+        }
     });
+
+    /**
+     * Initialize Reports Functionality
+     */
+    function initReports() {
+        console.log('HHLC: Initializing reports functionality');
+
+        // Tab switching
+        initReportTabs();
+
+        // Load today's counts on page load
+        loadTodayCounts();
+
+        // Edit modal handlers
+        initEditModal();
+
+        // Report date range handler
+        initDateRangeReport();
+    }
+
+    /**
+     * Initialize report tab switching
+     */
+    function initReportTabs() {
+        $('.hhlc-tab-button').on('click', function() {
+            const tabName = $(this).data('tab');
+
+            // Update active states
+            $('.hhlc-tab-button').removeClass('active');
+            $(this).addClass('active');
+
+            $('.hhlc-tab-content').removeClass('active');
+            $('#' + tabName + '-tab').addClass('active');
+
+            // Load content based on tab
+            if (tabName === 'today-counts' && !$('#today-counts-tab').data('loaded')) {
+                loadTodayCounts();
+            } else if (tabName === 'today-totals' && !$('#today-totals-tab').data('loaded')) {
+                loadTodayTotals();
+            }
+        });
+    }
+
+    /**
+     * Load today's counts table
+     */
+    function loadTodayCounts() {
+        const $container = $('#today-counts-tab');
+        const locationId = $('.hhlc-reports-container').data('location');
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_get_today_counts',
+                location_id: locationId,
+                date: getCurrentDate(),
+                nonce: hhlcAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    renderTodayCountsTable(response.data);
+                    $container.data('loaded', true);
+                } else {
+                    $container.html('<p class="hhlc-error">Error loading counts: ' + response.data + '</p>');
+                }
+            },
+            error: function() {
+                $container.html('<p class="hhlc-error">Network error. Please try again.</p>');
+            }
+        });
+    }
+
+    /**
+     * Render today's counts table
+     */
+    function renderTodayCountsTable(data) {
+        const $container = $('#today-counts-tab');
+        const rooms = data.rooms;
+        const linenItems = data.linen_items;
+
+        if (!rooms || rooms.length === 0) {
+            $container.html('<p class="hhlc-notice">No rooms found for today.</p>');
+            return;
+        }
+
+        let html = '<div class="hhlc-counts-table-wrapper">';
+        html += '<table class="hhlc-counts-table">';
+        html += '<thead><tr>';
+        html += '<th class="room-column">Room</th>';
+
+        // Linen item headers
+        linenItems.forEach(item => {
+            html += '<th class="linen-column" title="' + escapeHtml(item.name) + '">';
+            html += '<span class="linen-shortcode">' + escapeHtml(item.shortcode) + '</span>';
+            html += '</th>';
+        });
+
+        html += '<th class="actions-column">Actions</th>';
+        html += '</tr></thead>';
+        html += '<tbody>';
+
+        // Render room rows
+        rooms.forEach(room => {
+            const statusClass = 'status-' + room.status;
+            html += '<tr data-room-id="' + escapeHtml(room.room_id) + '" data-status="' + room.status + '">';
+            html += '<td class="room-cell ' + statusClass + '">' + escapeHtml(room.room_id) + '</td>';
+
+            // Render counts for each linen item
+            linenItems.forEach(item => {
+                const count = room.counts[item.id] || 0;
+                html += '<td class="count-cell">' + count + '</td>';
+            });
+
+            // Actions column
+            html += '<td class="actions-cell">';
+            html += '<button class="button button-small hhlc-edit-room-count" data-room-id="' + escapeHtml(room.room_id) + '" title="Edit count">';
+            html += '<span class="dashicons dashicons-edit"></span>';
+            html += '</button>';
+            html += '</td>';
+
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        html += '</div>';
+
+        // Submit all button
+        const hasUnsubmitted = rooms.some(room => room.status === 'unsubmitted');
+        if (hasUnsubmitted) {
+            html += '<div class="hhlc-submit-all-bar">';
+            html += '<button type="button" class="button button-primary hhlc-submit-all-btn" id="hhlc-submit-all-counts">';
+            html += '<span class="dashicons dashicons-yes"></span> Submit All Unsubmitted Counts';
+            html += '</button>';
+            html += '</div>';
+        }
+
+        $container.html(html);
+
+        // Bind edit button handlers
+        $('.hhlc-edit-room-count').on('click', function() {
+            const roomId = $(this).data('room-id');
+            openEditModal(roomId);
+        });
+
+        // Bind submit all handler
+        $('#hhlc-submit-all-counts').on('click', function() {
+            submitAllUnsubmitted();
+        });
+    }
+
+    /**
+     * Load today's totals
+     */
+    function loadTodayTotals() {
+        const $container = $('#today-totals-tab');
+        const locationId = $('.hhlc-reports-container').data('location');
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_get_today_totals',
+                location_id: locationId,
+                date: getCurrentDate(),
+                nonce: hhlcAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    renderTodayTotalsTable(response.data);
+                    $container.data('loaded', true);
+                } else {
+                    $container.html('<p class="hhlc-error">Error loading totals: ' + response.data + '</p>');
+                }
+            },
+            error: function() {
+                $container.html('<p class="hhlc-error">Network error. Please try again.</p>');
+            }
+        });
+    }
+
+    /**
+     * Render today's totals table
+     */
+    function renderTodayTotalsTable(data) {
+        const $container = $('#today-totals-tab');
+        const totals = data.totals;
+
+        let html = '<div class="hhlc-totals-table-wrapper">';
+        html += '<table class="hhlc-totals-table">';
+        html += '<thead><tr>';
+        html += '<th>Linen Item</th>';
+        html += '<th>Total Count</th>';
+        html += '</tr></thead>';
+        html += '<tbody>';
+
+        totals.forEach(item => {
+            html += '<tr>';
+            html += '<td>' + escapeHtml(item.name) + '</td>';
+            html += '<td class="count-cell">' + item.total + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        html += '</div>';
+
+        $container.html(html);
+    }
+
+    /**
+     * Initialize date range report
+     */
+    function initDateRangeReport() {
+        $('#hhlc-load-report').on('click', function() {
+            loadDateRangeReport();
+        });
+    }
+
+    /**
+     * Load date range report
+     */
+    function loadDateRangeReport() {
+        const $resultsContainer = $('.hhlc-report-results');
+        const locationId = $('.hhlc-reports-container').data('location');
+        const dateFrom = $('#hhlc-date-from').val();
+        const dateTo = $('#hhlc-date-to').val();
+
+        if (!dateFrom || !dateTo) {
+            $resultsContainer.html('<p class="hhlc-error">Please select both start and end dates.</p>');
+            return;
+        }
+
+        $resultsContainer.html('<div class="hhlc-loading"><span class="spinner is-active"></span><p>Loading report...</p></div>');
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_get_date_range_report',
+                location_id: locationId,
+                date_from: dateFrom,
+                date_to: dateTo,
+                nonce: hhlcAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    renderDateRangeReport(response.data);
+                } else {
+                    $resultsContainer.html('<p class="hhlc-error">Error loading report: ' + response.data + '</p>');
+                }
+            },
+            error: function() {
+                $resultsContainer.html('<p class="hhlc-error">Network error. Please try again.</p>');
+            }
+        });
+    }
+
+    /**
+     * Render date range report
+     */
+    function renderDateRangeReport(data) {
+        const $container = $('.hhlc-report-results');
+        const report = data.report;
+        const dates = data.dates;
+
+        let html = '<div class="hhlc-report-table-wrapper">';
+        html += '<table class="hhlc-report-table">';
+        html += '<thead><tr>';
+        html += '<th class="item-column">Linen Item</th>';
+
+        // Date column headers
+        dates.forEach(date => {
+            const formattedDate = formatDate(date);
+            html += '<th class="date-column">' + formattedDate + '</th>';
+        });
+
+        html += '<th class="total-column">Grand Total</th>';
+        html += '</tr></thead>';
+        html += '<tbody>';
+
+        // Render item rows
+        report.forEach(item => {
+            html += '<tr>';
+            html += '<td class="item-cell">' + escapeHtml(item.name) + '</td>';
+
+            // Render counts for each date
+            dates.forEach(date => {
+                const count = item.by_date[date] || 0;
+                html += '<td class="count-cell">' + count + '</td>';
+            });
+
+            // Grand total
+            html += '<td class="total-cell"><strong>' + item.grand_total + '</strong></td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        html += '</div>';
+
+        $container.html(html);
+    }
+
+    /**
+     * Initialize edit modal
+     */
+    function initEditModal() {
+        // Close modal handlers
+        $('.hhlc-modal-close, .hhlc-edit-modal-overlay').on('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+
+        // Prevent modal content clicks from closing
+        $('.hhlc-edit-modal').on('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    /**
+     * Open edit modal for a room
+     */
+    function openEditModal(roomId) {
+        const locationId = $('.hhlc-reports-container').data('location');
+        const date = getCurrentDate();
+
+        $('#hhlc-modal-room-title').text('Edit Spoilt Linen Count - ' + roomId);
+        $('#hhlc-edit-modal').fadeIn(200);
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_get_room_linen_data',
+                location_id: locationId,
+                room_id: roomId,
+                date: date,
+                nonce: hhlcAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('.hhlc-edit-modal-body').html(response.data.html);
+
+                    // Initialize linen state for the modal content
+                    const $linenControls = $('.hhlc-edit-modal-body .hhlc-linen-controls');
+                    if ($linenControls.length) {
+                        initializeLinenState($linenControls);
+                    }
+                } else {
+                    $('.hhlc-edit-modal-body').html('<p class="hhlc-error">Error loading data: ' + response.data + '</p>');
+                }
+            },
+            error: function() {
+                $('.hhlc-edit-modal-body').html('<p class="hhlc-error">Network error. Please try again.</p>');
+            }
+        });
+    }
+
+    /**
+     * Close edit modal
+     */
+    function closeEditModal() {
+        $('#hhlc-edit-modal').fadeOut(200);
+
+        // Reload today's counts if modal was used
+        setTimeout(function() {
+            $('#today-counts-tab').data('loaded', false);
+            if ($('#today-counts-tab').hasClass('active')) {
+                loadTodayCounts();
+            }
+        }, 250);
+    }
+
+    /**
+     * Submit all unsubmitted counts
+     */
+    function submitAllUnsubmitted() {
+        if (!confirm('Submit all unsubmitted counts for today?')) {
+            return;
+        }
+
+        const locationId = $('.hhlc-reports-container').data('location');
+        const date = getCurrentDate();
+
+        $.ajax({
+            url: hhlcAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'hhlc_submit_all_unsubmitted',
+                location_id: locationId,
+                date: date,
+                nonce: hhlcAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    // Reload today's counts
+                    $('#today-counts-tab').data('loaded', false);
+                    loadTodayCounts();
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('Network error. Please try again.');
+            }
+        });
+    }
+
+    /**
+     * Helper: Get current date from URL or today
+     */
+    function getCurrentDate() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('date') || new Date().toISOString().split('T')[0];
+    }
+
+    /**
+     * Helper: Format date for display (e.g., "01/15")
+     */
+    function formatDate(dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return month + '/' + day;
+    }
+
+    /**
+     * Helper: Escape HTML
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
 
     // Export for external use
     window.HHLC_Linen = {
         init: initLinenCount,
         getCurrentState: function() { return currentLinenState; },
-        submitCount: function() { $('.hhlc-submit-linen-count').click(); }
+        submitCount: function() { $('.hhlc-submit-linen-count').click(); },
+        reports: {
+            loadTodayCounts: loadTodayCounts,
+            loadTodayTotals: loadTodayTotals,
+            loadDateRangeReport: loadDateRangeReport
+        }
     };
 
 })(jQuery);

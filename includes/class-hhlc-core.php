@@ -100,7 +100,7 @@ class HHLC_Core {
     }
 
     public function get_name() {
-        return __('Spoilt Linen Count', 'hhlc');
+        return __('Spoilt Linen Reports', 'hhlc');
     }
 
     public function get_description() {
@@ -128,7 +128,7 @@ class HHLC_Core {
     }
 
     public function get_callback() {
-        return null;
+        return array('HHLC_Display', 'render_reports_page');
     }
 
 
