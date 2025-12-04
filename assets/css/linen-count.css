@@ -974,17 +974,14 @@
 /* Mobile responsiveness for reports */
 @media (max-width: 768px) {
     .hhlc-reports-tabs {
-        flex-direction: column;
+        flex-direction: row; /* Keep horizontal */
+        overflow-x: auto; /* Allow scrolling if needed */
     }
 
     .hhlc-tab-button {
-        border-bottom: 1px solid #ddd;
-        border-left: 3px solid transparent;
-    }
-
-    .hhlc-tab-button.active {
-        border-bottom: 1px solid #ddd;
-        border-left-color: #0073aa;
+        flex-shrink: 0; /* Prevent shrinking */
+        font-size: 14px;
+        padding: 12px 15px;
     }
 
     .hhlc-tab-content {

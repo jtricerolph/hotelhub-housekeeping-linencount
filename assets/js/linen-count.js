@@ -818,6 +818,18 @@
 
         // Initialize reports if container exists
         if ($('.hhlc-reports-container').length) {
+            console.log('HHLC: Found reports container on page load');
+            initReports();
+        }
+    });
+
+    // Listen for module load event (when content is injected via AJAX)
+    $(document).on('hha-module-loaded', function(event, data) {
+        console.log('HHLC: Module loaded event received', data);
+
+        // Check if reports container now exists
+        if ($('.hhlc-reports-container').length) {
+            console.log('HHLC: Found reports container after module load, initializing reports');
             initReports();
         }
     });
@@ -827,6 +839,8 @@
      */
     function initReports() {
         console.log('HHLC: Initializing reports functionality');
+        console.log('HHLC: Reports container exists:', $('.hhlc-reports-container').length > 0);
+        console.log('HHLC: Tab buttons exist:', $('.hhlc-tab-button').length);
 
         // Tab switching
         initReportTabs();
@@ -839,6 +853,8 @@
 
         // Report date range handler
         initDateRangeReport();
+
+        console.log('HHLC: Reports initialization complete');
     }
 
     /**
@@ -868,8 +884,14 @@
      * Load today's counts table
      */
     function loadTodayCounts() {
+        console.log('HHLC: loadTodayCounts called');
         const $container = $('#today-counts-tab');
         const locationId = $('.hhlc-reports-container').data('location');
+
+        console.log('HHLC: Container found:', $container.length > 0);
+        console.log('HHLC: Location ID:', locationId);
+        console.log('HHLC: Current date:', getCurrentDate());
+        console.log('HHLC: AJAX URL:', hhlcAjax.ajax_url);
 
         $.ajax({
             url: hhlcAjax.ajax_url,
@@ -880,15 +902,22 @@
                 date: getCurrentDate(),
                 nonce: hhlcAjax.nonce
             },
+            beforeSend: function() {
+                console.log('HHLC: Sending AJAX request for today counts');
+            },
             success: function(response) {
+                console.log('HHLC: Today counts response:', response);
                 if (response.success) {
                     renderTodayCountsTable(response.data);
                     $container.data('loaded', true);
                 } else {
+                    console.error('HHLC: Error in response:', response.data);
                     $container.html('<p class="hhlc-error">Error loading counts: ' + response.data + '</p>');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('HHLC: AJAX error:', status, error);
+                console.error('HHLC: XHR:', xhr);
                 $container.html('<p class="hhlc-error">Network error. Please try again.</p>');
             }
         });
