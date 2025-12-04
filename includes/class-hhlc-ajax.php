@@ -840,35 +840,13 @@ class HHLC_Ajax {
     }
 
     /**
-     * Get hotel record from location ID
+     * Get hotel from location ID
      */
     private function get_hotel_from_location($location_id) {
-        try {
-            if (!function_exists('hha')) {
-                error_log('HHLC: hha() function not found');
-                return null;
-            }
-
-            $hha = hha();
-            if (!isset($hha->hotels)) {
-                error_log('HHLC: hha()->hotels not found');
-                return null;
-            }
-
-            $hotels = $hha->hotels->get_all();
-            foreach ($hotels as $hotel) {
-                if ($hotel->id == $location_id) {
-                    error_log('HHLC: Found hotel for location ' . $location_id);
-                    return $hotel;
-                }
-            }
-
-            error_log('HHLC: Hotel not found in hotels list for location ' . $location_id);
-            return null;
-        } catch (Exception $e) {
-            error_log('HHLC: Exception in get_hotel_from_location: ' . $e->getMessage());
+        if (!function_exists('hha')) {
             return null;
         }
+        return hha()->hotels->get($location_id);
     }
 
 }
