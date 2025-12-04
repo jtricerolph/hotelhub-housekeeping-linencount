@@ -160,6 +160,15 @@ class HHLC_Core {
             )
         );
     }
+
+    /**
+     * Render the module content
+     * This is called by the Hotel Hub module system
+     */
+    public function render($params = array()) {
+        HHLC_Display::render_reports_page();
+    }
+
     /**
      * Enqueue frontend assets
      */
